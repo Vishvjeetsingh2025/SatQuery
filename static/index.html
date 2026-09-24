@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SatQuery AI</title>
+<script type="module">
+const CDNS = ["https://cdn.jsdelivr.net/npm/@splinetool/viewer/build/spline-viewer.js",
+              "https://unpkg.com/@splinetool/viewer/build/spline-viewer.js",
+              "https://esm.sh/@splinetool/viewer"];
+for (const u of CDNS) { try { await import(u); console.log("Spline viewer loaded from", u); break; } catch (e) { console.warn("Spline CDN failed:", u); } }
+</script>
+<style>
+:root{--bg:#050816;--card:rgba(255,255,255,.06);--line:rgba(255,255,255,.12);--acc:#4da3ff;--acc2:#8a5cff;--tx:#e8ecff;--mut:#8b93b8}
+*{box-sizing:border-box;margin:0}html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--tx);font-family:Inter,system-ui,sans-serif}
+#hero{position:relative;height:100vh;overflow:hidden;
+  background:radial-gradient(circle at 70% 30%,#1b2a6b 0,transparent 45%),radial-gradient(circle at 20% 80%,#3a1b6b 0,transparent 40%),var(--bg)}
+#bg,#bg spline-viewer{position:absolute;inset:0;width:100%;height:100%}
+#sat{position:absolute;right:0;top:0;width:48%;height:100%;mix-blend-mode:screen;pointer-events:none} /* screen = dark scene bg turns see-through, particles show behind satellite; pointer-events:none = mouse reaches the particle scene everywhere (remove that bit to rotate the satellite) */
+#bg iframe,#sat spline-viewer,#sat iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+@media(max-width:900px){#sat{width:100%;opacity:.5}}
+.stars{position:absolute;inset:0;background-image:radial-gradient(3px 3px at 40px 50px,#fff,transparent),radial-gradient(2px 2px at 150px 130px,#cfe2ff,transparent),radial-gradient(4px 4px at 230px 40px,#fff,transparent),radial-gradient(2.5px 2.5px at 90px 210px,#b9a6ff,transparent);background-size:280px 280px;animation:drift 60s linear infinite;opacity:.9}
+@keyframes drift{to{background-position:-400px 400px}}
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:0 8vw;pointer-events:none;max-width:780px}
+.tag{color:var(--acc);letter-spacing:.2em;font-size:.8rem;text-transform:uppercase;margin-bottom:1rem}
+h1{font-size:clamp(3rem,9vw,7rem);line-height:1;font-weight:800}
+h1 span{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;color:transparent}
+.sub{color:var(--mut);font-size:1.2rem;margin:1.2rem 0 2rem;max-width:520px}
+.btn{pointer-events:auto;align-self:flex-start;padding:.9rem 2rem;border-radius:99px;color:#fff;text-decoration:none;font-weight:600;background:linear-gradient(90deg,var(--acc),var(--acc2));box-shadow:0 0 30px #4da3ff66;transition:.2s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 0 45px #8a5cffaa}
+#app{min-height:100vh;padding:5rem 5vw;display:grid;grid-template-columns:1fr 1.2fr;gap:1.5rem;max-width:1400px;margin:auto}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:1.4rem;backdrop-filter:blur(16px)}
+h2{font-size:1.1rem;margin-bottom:1rem}
+#drop{border:2px dashed var(--line);border-radius:14px;padding:2rem;text-align:center;color:var(--mut);cursor:pointer;transition:.2s}
+#drop.over,#drop:hover{border-color:var(--acc);color:var(--tx);background:#4da3ff14}
+#grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin-top:1rem}
+.th{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;border:2px solid transparent;transition:.3s}
+.th img{width:100%;height:100%;object-fit:cover}
+.th b{position:absolute;left:4px;top:4px;background:#000a;border-radius:6px;font-size:.7rem;padding:1px 6px}
+.th i{position:absolute;right:4px;top:4px;background:#000a;border-radius:50%;width:18px;height:18px;font-size:.7rem;text-align:center;cursor:pointer;font-style:normal}
+.th.hit{border-color:var(--acc);box-shadow:0 0 18px var(--acc)}
+#chat{display:flex;flex-direction:column;height:78vh}
+#msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:.8rem;padding-right:.3rem}
+.m{padding:.8rem 1rem;border-radius:14px;max-width:92%;line-height:1.5;font-size:.95rem}
+.u{align-self:flex-end;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.a{align-self:flex-start;background:#ffffff0d;border:1px solid var(--line)}
+.chip{display:inline-block;font-size:.7rem;padding:2px 10px;border-radius:99px;background:#4da3ff33;color:var(--acc);margin-top:.6rem}
+.ev{color:var(--mut);font-size:.85rem;margin:.6rem 0 0 1rem}
+.rel{display:flex;gap:.5rem;margin-top:.7rem;flex-wrap:wrap}.rel div{width:74px;font-size:.7rem;text-align:center}.rel img{width:74px;height:74px;object-fit:cover;border-radius:8px;border:1px solid var(--acc)}
+.chg{display:flex;gap:.8rem;margin-top:.8rem;font-size:.82rem;color:var(--mut);align-items:center}.chg img{width:150px;border-radius:8px;border:1px solid #ff5050}
+.sb{display:flex;height:6px;border-radius:3px;overflow:hidden;margin:3px 0}.sb span{display:block}
+#stars{position:absolute;inset:0;width:100%;height:100%}
+.dot{animation:p 1s infinite}@keyframes p{50%{opacity:.3}}
+#chips{display:flex;gap:.5rem;flex-wrap:wrap;margin:.8rem 0}
+#chips button{background:none;border:1px solid var(--line);color:var(--mut);border-radius:99px;padding:.35rem .9rem;font-size:.8rem;cursor:pointer}
+#chips button:hover{color:var(--tx);border-color:var(--acc)}
+form{display:flex;gap:.6rem}
+input[type=text]{flex:1;background:#ffffff0d;border:1px solid var(--line);border-radius:12px;padding:.85rem 1rem;color:var(--tx);outline:none}
+input[type=text]:focus{border-color:var(--acc)}
+form button{border:0;border-radius:12px;padding:0 1.4rem;color:#fff;font-weight:600;cursor:pointer;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+@media(max-width:900px){#app{grid-template-columns:1fr}#chat{height:70vh}}
+</style>
+</head>
+<body>
+<section id="hero">
+  <div id="bg"><canvas id="stars"></canvas></div>
+  <div id="sat"></div>
+  <div class="overlay">
+    <p class="tag">SIH26167 · Space Technology</p>
+    <h1>SatQuery<span> AI</span></h1>
+    <p class="sub">Upload satellite imagery. Ask in plain language. Get answers grounded in what the images actually show.</p>
+    <a class="btn" href="#app">Launch Analyst →</a>
+  </div>
+</section>
+
+<main id="app">
+  <div class="panel">
+    <h2>🛰️ Imagery <span id="count" style="color:var(--mut)">(0/16)</span></h2>
+    <div id="drop">Drop up to 16 satellite images here or click to browse</div>
+    <input id="file" type="file" accept="image/*" multiple hidden>
+    <div id="grid"></div>
+  </div>
+  <div class="panel" id="chat">
+    <h2>💬 Ask SatQuery</h2>
+    <div id="msgs"><div class="m a">Upload your images (for change detection, upload <b>oldest → newest</b>), then ask anything: land use, water, vegetation, urban growth, damage, or comparisons between images.</div></div>
+    <div id="chips"></div>
+    <form id="f"><input id="q" type="text" placeholder="e.g. Which images contain water bodies?" autocomplete="off"><button>Send</button></form>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const SPLINE_BG_URL  = "https://prod.spline.design/ja7rpTyvpIRNkP55/scene.splinecode"; // scene 1: particle sphere  -> full-screen background
+const SPLINE_SAT_URL = "https://prod.spline.design/JWpzh9ThuZsAjk2i/scene.splinecode"; // scene 2: green satellite    -> right side of hero
+// Accepts a ...scene.splinecode link (Code Export > Viewer) or a public my.spline.design link.
+function mount(id, url) {
+  if (!url) return;
+  let el;
+  if (url.includes(".splinecode")) { el = document.createElement("spline-viewer"); el.setAttribute("url", url); }
+  else { el = document.createElement("iframe"); el.src = url; el.setAttribute("frameborder", "0"); }
+  el.addEventListener("error", e => console.warn("Spline error", url, e)); $(id).append(el);
+}
+mount("bg", SPLINE_BG_URL); mount("sat", SPLINE_SAT_URL);
+
+// Fallback starfield (shown until Spline URLs are set): random twinkling stars, mouse parallax, shooting stars
+(function () {
+  const c = document.getElementById("stars"); if (!c) return;
+  const x = c.getContext("2d"), R = window.devicePixelRatio || 1; let W, H, mx = 0, my = 0, shots = [];
+  const size = () => { W = c.width = c.offsetWidth * R; H = c.height = c.offsetHeight * R; };
+  size(); addEventListener("resize", size);
+  const S = Array.from({ length: 260 }, () => ({ x: Math.random(), y: Math.random(), r: Math.random() ** 3 * 2.6 + .6,
+    d: Math.random() * .8 + .2, p: Math.random() * 6.28, t: Math.random() * .02 + .005 }));
+  addEventListener("mousemove", e => { mx = e.clientX / innerWidth - .5; my = e.clientY / innerHeight - .5; });
+  (function draw() {
+    if (!c.isConnected) return;            // stops automatically once a Spline scene replaces it
+    x.clearRect(0, 0, W, H);
+    S.forEach(s => {
+      s.p += s.t;
+      const px = (s.x * W - mx * s.d * 40 * R + W) % W, py = (s.y * H - my * s.d * 40 * R + H) % H;
+      x.globalAlpha = .55 + .45 * Math.sin(s.p); x.fillStyle = s.r > 2 ? "#cfe2ff" : "#fff";
+      x.shadowColor = "#9ec5ff"; x.shadowBlur = s.r * 4;
+      x.beginPath(); x.arc(px, py, s.r * R, 0, 6.283); x.fill();
+    });
+    x.shadowBlur = 0;
+    if (Math.random() < .008) shots.push({ x: Math.random() * W * .8, y: Math.random() * H * .4, l: 0 });
+    shots = shots.filter(t => t.l < 45);
+    shots.forEach(t => {
+      t.l++; t.x += 16 * R; t.y += 8 * R; x.globalAlpha = 1 - t.l / 45; x.strokeStyle = "#fff"; x.lineWidth = 2 * R;
+      x.beginPath(); x.moveTo(t.x - 90 * R, t.y - 45 * R); x.lineTo(t.x, t.y); x.stroke();
+    });
+    requestAnimationFrame(draw);
+  })();
+})();
+
+
+let files = [], history = [];
+const esc = s => s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const fmt = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\n/g, "<br>");
+
+["Which images contain water bodies?","Compare vegetation vs urban area","Any roads, buildings or airports?","Rank images by greenness"]
+  .forEach(t => { const b = document.createElement("button"); b.type="button"; b.textContent=t; b.onclick=()=>{$("q").value=t;$("f").requestSubmit()}; $("chips").append(b); });
+
+function renderGrid() {
+  $("count").textContent = `(${files.length}/16)`;
+  $("grid").innerHTML = "";
+  files.forEach((f, i) => {
+    const d = document.createElement("div"); d.className = "th";
+    d.innerHTML = `<img src="${URL.createObjectURL(f)}"><b>${i+1}</b><i>×</i>`;
+    d.querySelector("i").onclick = () => { files.splice(i, 1); renderGrid(); };
+    $("grid").append(d);
+  });
+}
+function addFiles(list) {
+  files = [...files, ...[...list].filter(f => f.type.startsWith("image/"))].slice(0, 16);
+  renderGrid();
+}
+$("drop").onclick = () => $("file").click();
+$("file").onchange = e => addFiles(e.target.files);
+$("drop").ondragover = e => { e.preventDefault(); $("drop").classList.add("over"); };
+$("drop").ondragleave = () => $("drop").classList.remove("over");
+$("drop").ondrop = e => { e.preventDefault(); $("drop").classList.remove("over"); addFiles(e.dataTransfer.files); };
+
+function bubble(cls, html) {
+  const d = document.createElement("div"); d.className = "m " + cls; d.innerHTML = html;
+  $("msgs").append(d); $("msgs").scrollTop = 1e9; return d;
+}
+
+$("f").onsubmit = async e => {
+  e.preventDefault();
+  const q = $("q").value.trim(); if (!q) return;
+  if (!files.length) return bubble("a", "Please upload at least one image first.");
+  $("q").value = "";
+  bubble("u", esc(q));
+  const wait = bubble("a", '<span class="dot">Analysing imagery…</span>');
+  const fd = new FormData();
+  fd.append("prompt", q); fd.append("history", JSON.stringify(history));
+  files.forEach(f => fd.append("files", f));
+  try {
+    const r = await fetch("/api/query", { method: "POST", body: fd });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    const rel = (d.relevant_images || []).filter(i => Number.isInteger(i) && i >= 1 && i <= files.length);
+    const seg = m => m ? `<div class="sb" title="green=vegetation, blue=water, grey=built/bare, tan=other"><span style="width:${m.vegetation}%;background:#3fbf5f"></span><span style="width:${m.water}%;background:#3d8bff"></span><span style="width:${m.built_or_bare}%;background:#9aa0b5"></span><span style="width:${m.other}%;background:#c9a26a"></span></div>` : "";
+    let h = fmt(d.answer || "");
+    (d.changes || []).forEach(c => { h += `<div class="chg"><img src="data:image/jpeg;base64,${c.overlay}"><div><b style="color:var(--tx)">Image ${c.pair[0]} → ${c.pair[1]}</b><br>Changed area: <b style="color:#ff7070">${c.changed_pct}%</b><br>${Object.entries(c.transitions).map(([k, v]) => `${k.replace(/_/g, " ")}: +${v.gain_pct}% / −${v.loss_pct}%`).join("<br>")}</div></div>`; });
+    h += `<br><span class="chip">Confidence: ${esc(d.confidence || "?")}</span>`;
+    if ((d.observations || []).length) h += `<ul class="ev">${d.observations.map(o => `<li>${esc(o)}</li>`).join("")}</ul>`;
+    if (rel.length) h += `<div class="rel">${rel.map(i => `<div><img src="${URL.createObjectURL(files[i-1])}">${seg((d.measurements||[])[i-1])}Image ${i}</div>`).join("")}</div>`;
+    wait.innerHTML = h;
+    document.querySelectorAll(".th").forEach((el, i) => el.classList.toggle("hit", rel.includes(i + 1)));
+    history.push({ role: "user", text: q }, { role: "assistant", text: d.answer || "" });
+  } catch (err) { wait.textContent = "Error: " + err.message; }
+  $("msgs").scrollTop = 1e9;
+};
+</script>
+</body>
+</html>
