@@ -1,14 +1,18 @@
 import base64, io, json, os
 from fastapi import FastAPI, File, Form, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from PIL import Image
 from google import genai
 from google.genai import types
 import analytics as an
+import db
+import report as rpt
 
 app = FastAPI(title="SatQuery AI")
 MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])  # set in terminal, never in code
+db.init()
+ALERT_THRESHOLD_PCT = 8.0  # watchlist auto-alert fires above this % changed area
 
 ROUTER = """Classify a user's query about N satellite images. Return ONLY JSON:
 {"intent": "describe|retrieve|measure|count|locate|compare|change|other",
@@ -37,9 +41,16 @@ def ask_json(contents, system, temp=0.2):
     return json.loads(r.text)
 
 
-def b64(im):
-    buf = io.BytesIO(); im.convert("RGB").save(buf, "JPEG", quality=80)
+def b64(im, max_side=None, quality=80):
+    im2 = im.convert("RGB")
+    if max_side:
+        im2 = im2.copy(); im2.thumbnail((max_side, max_side))
+    buf = io.BytesIO(); im2.save(buf, "JPEG", quality=quality)
     return base64.b64encode(buf.getvalue()).decode()
+
+
+def b64_to_image(s):
+    return Image.open(io.BytesIO(base64.b64decode(s))).convert("RGB")
 
 
 @app.post("/api/query")
@@ -78,9 +89,61 @@ async def query(prompt: str = Form(...), history: str = Form("[]"), files: list[
         data["measurements"] = meas
         data["changes"] = [{"pair": c["pair"], "changed_pct": c["changed_pct"],
                             "transitions": c["transitions"], "overlay": b64(c["overlay"])} for c in changes]
+
+        # 4) persist to history (new: every analysis becomes revisitable + report-able)
+        thumb = b64(imgs[0], max_side=360, quality=70) if imgs else None
+        hid = db.add_history(prompt, data.get("intent"), data.get("answer"),
+                              data.get("confidence"), thumb, data.get("observations"))
+        data["history_id"] = hid
         return data
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
+
+
+# ---------------- History ----------------
+
+@app.get("/api/history")
+def api_history_list():
+    return db.list_history()
+
+
+@app.get("/api/report/{history_id}")
+def api_report(history_id: int):
+    record = db.get_history(history_id)
+    if not record:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    pdf_bytes = rpt.build_report(record)
+    return Response(content=pdf_bytes, media_type="application/pdf",
+                     headers={"Content-Disposition": f'attachment; filename="satquery_report_{history_id}.pdf"'})
+
+
+# ---------------- Watchlist (save a baseline image, auto-check new images against it) ----------------
+
+@app.post("/api/watchlist/save")
+async def watchlist_save(name: str = Form(...), file: UploadFile = File(...)):
+    im = Image.open(io.BytesIO(await file.read())).convert("RGB"); im.thumbnail((1024, 1024))
+    meas = an.stats(im)
+    wid = db.add_watchlist(name, b64(im, max_side=800), meas)
+    return {"id": wid, "name": name, "baseline_meas": meas}
+
+
+@app.get("/api/watchlist")
+def watchlist_list():
+    return db.list_watchlist()
+
+
+@app.post("/api/watchlist/{watchlist_id}/check")
+async def watchlist_check(watchlist_id: int, file: UploadFile = File(...)):
+    wl = db.get_watchlist(watchlist_id)
+    if not wl:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    baseline_im = b64_to_image(wl["baseline_b64"])
+    new_im = Image.open(io.BytesIO(await file.read())).convert("RGB"); new_im.thumbnail((1024, 1024))
+    c = an.change(baseline_im, new_im)
+    alert = c["changed_pct"] >= ALERT_THRESHOLD_PCT
+    db.update_watchlist_check(watchlist_id, c["changed_pct"], alert)
+    return {"changed_pct": c["changed_pct"], "transitions": c["transitions"],
+            "overlay": b64(c["overlay"]), "alert": alert, "threshold": ALERT_THRESHOLD_PCT}
 
 
 @app.get("/")

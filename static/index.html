@@ -60,6 +60,21 @@ input[type=text]{flex:1;background:#ffffff0d;border:1px solid var(--line);border
 input[type=text]:focus{border-color:var(--acc)}
 form button{border:0;border-radius:12px;padding:0 1.4rem;color:#fff;font-weight:600;cursor:pointer;background:linear-gradient(90deg,var(--acc),var(--acc2))}
 @media(max-width:900px){#app{grid-template-columns:1fr}#chat{height:70vh}}
+.side{display:flex;flex-direction:column;gap:1.5rem}
+.mini{max-height:230px;overflow-y:auto;display:flex;flex-direction:column;gap:.5rem;margin-top:.8rem}
+.hrow{background:#ffffff08;border:1px solid var(--line);border-radius:10px;padding:.6rem .7rem;font-size:.8rem;display:flex;justify-content:space-between;gap:.5rem;align-items:center}
+.hrow .txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;color:var(--tx)}
+.hrow .meta{color:var(--mut);font-size:.7rem}
+.pill{font-size:.65rem;padding:1px 8px;border-radius:99px;background:#4da3ff33;color:var(--acc);white-space:nowrap}
+.mini a{color:var(--acc);text-decoration:none;font-size:.75rem;white-space:nowrap}
+.wl-item{background:#ffffff08;border:1px solid var(--line);border-radius:10px;padding:.7rem;font-size:.82rem;margin-top:.6rem}
+.wl-item .top{display:flex;justify-content:space-between;align-items:center}
+.wl-item .alertbox{margin-top:.5rem;padding:.5rem .6rem;border-radius:8px;font-size:.78rem}
+.wl-item .alertbox.on{background:#ff505022;border:1px solid #ff5050;color:#ffb0b0}
+.wl-item .alertbox.off{background:#3fbf5f22;border:1px solid #3fbf5f;color:#b0ffc0}
+.smallbtn{font-size:.72rem;padding:.3rem .7rem;border-radius:8px;border:1px solid var(--line);background:#ffffff0d;color:var(--tx);cursor:pointer}
+.smallbtn:hover{border-color:var(--acc)}
+.rpt-link{font-size:.72rem;color:var(--acc);text-decoration:none;margin-left:.6rem}
 </style>
 </head>
 <body>
@@ -75,11 +90,23 @@ form button{border:0;border-radius:12px;padding:0 1.4rem;color:#fff;font-weight:
 </section>
 
 <main id="app">
-  <div class="panel">
-    <h2>🛰️ Imagery <span id="count" style="color:var(--mut)">(0/16)</span></h2>
-    <div id="drop">Drop up to 16 satellite images here or click to browse</div>
-    <input id="file" type="file" accept="image/*" multiple hidden>
-    <div id="grid"></div>
+  <div class="side">
+    <div class="panel">
+      <h2>🛰️ Imagery <span id="count" style="color:var(--mut)">(0/16)</span></h2>
+      <div id="drop">Drop up to 16 satellite images here or click to browse</div>
+      <input id="file" type="file" accept="image/*" multiple hidden>
+      <div id="grid"></div>
+    </div>
+    <div class="panel">
+      <h2>🕒 History</h2>
+      <div class="mini" id="histList" style="margin-top:.4rem;color:var(--mut);font-size:.8rem">No past analyses yet — ask something!</div>
+    </div>
+    <div class="panel">
+      <h2>🚨 Watchlist <span style="color:var(--mut);font-weight:400;font-size:.75rem">(auto-alert on new imagery)</span></h2>
+      <button type="button" class="smallbtn" id="saveWL" style="margin-top:.4rem">+ Save Image 1 as Watchlist baseline</button>
+      <input id="wlCheckFile" type="file" accept="image/*" hidden>
+      <div id="wlList" style="margin-top:.6rem;color:var(--mut);font-size:.8rem">No watchlist areas saved yet.</div>
+    </div>
   </div>
   <div class="panel" id="chat">
     <h2>💬 Ask SatQuery</h2>
@@ -185,13 +212,85 @@ $("f").onsubmit = async e => {
     let h = fmt(d.answer || "");
     (d.changes || []).forEach(c => { h += `<div class="chg"><img src="data:image/jpeg;base64,${c.overlay}"><div><b style="color:var(--tx)">Image ${c.pair[0]} → ${c.pair[1]}</b><br>Changed area: <b style="color:#ff7070">${c.changed_pct}%</b><br>${Object.entries(c.transitions).map(([k, v]) => `${k.replace(/_/g, " ")}: +${v.gain_pct}% / −${v.loss_pct}%`).join("<br>")}</div></div>`; });
     h += `<br><span class="chip">Confidence: ${esc(d.confidence || "?")}</span>`;
+    if (d.history_id) h += `<a class="rpt-link" href="/api/report/${d.history_id}" target="_blank">📥 Download PDF report</a>`;
     if ((d.observations || []).length) h += `<ul class="ev">${d.observations.map(o => `<li>${esc(o)}</li>`).join("")}</ul>`;
     if (rel.length) h += `<div class="rel">${rel.map(i => `<div><img src="${URL.createObjectURL(files[i-1])}">${seg((d.measurements||[])[i-1])}Image ${i}</div>`).join("")}</div>`;
     wait.innerHTML = h;
     document.querySelectorAll(".th").forEach((el, i) => el.classList.toggle("hit", rel.includes(i + 1)));
     history.push({ role: "user", text: q }, { role: "assistant", text: d.answer || "" });
+    loadHistory();
   } catch (err) { wait.textContent = "Error: " + err.message; }
   $("msgs").scrollTop = 1e9;
+};
+
+// ---------------- History panel ----------------
+async function loadHistory() {
+  try {
+    const r = await fetch("/api/history"); const rows = await r.json();
+    if (!rows.length) { $("histList").innerHTML = "No past analyses yet — ask something!"; return; }
+    $("histList").innerHTML = rows.map(h => `
+      <div class="hrow">
+        <span class="txt" title="${esc(h.prompt)}">${esc(h.prompt)}</span>
+        <span class="pill">${esc(h.confidence || "?")}</span>
+        <a href="/api/report/${h.id}" target="_blank">PDF</a>
+      </div>`).join("");
+  } catch (e) { console.warn("history load failed", e); }
+}
+loadHistory();
+
+// ---------------- Watchlist panel ----------------
+let wlPendingCheckId = null;
+
+async function loadWatchlist() {
+  try {
+    const r = await fetch("/api/watchlist"); const rows = await r.json();
+    if (!rows.length) { $("wlList").innerHTML = "No watchlist areas saved yet."; return; }
+    $("wlList").innerHTML = rows.map(w => {
+      let alertHtml = "";
+      if (w.last_check_ts) {
+        const pct = (w.last_changed_pct ?? 0).toFixed(1);
+        alertHtml = w.last_alert
+          ? `<div class="alertbox on">⚠️ Alert: ${pct}% change detected since baseline!</div>`
+          : `<div class="alertbox off">✅ No major change (${pct}%) — within normal range.</div>`;
+      }
+      return `<div class="wl-item">
+        <div class="top"><b>${esc(w.name)}</b>
+          <button type="button" class="smallbtn" data-check="${w.id}">Check new image</button>
+        </div>
+        ${alertHtml}
+      </div>`;
+    }).join("");
+    document.querySelectorAll("[data-check]").forEach(btn => {
+      btn.onclick = () => { wlPendingCheckId = btn.getAttribute("data-check"); $("wlCheckFile").click(); };
+    });
+  } catch (e) { console.warn("watchlist load failed", e); }
+}
+loadWatchlist();
+
+$("saveWL").onclick = async () => {
+  if (!files.length) return alert("Upload at least one image first (Image 1 will be saved as the baseline).");
+  const name = prompt("Name this watchlist area (e.g. 'Nahargarh Forest - North Ridge'):");
+  if (!name) return;
+  const fd = new FormData(); fd.append("name", name); fd.append("file", files[0]);
+  $("saveWL").textContent = "Saving…"; $("saveWL").disabled = true;
+  try {
+    const r = await fetch("/api/watchlist/save", { method: "POST", body: fd });
+    if (!r.ok) throw new Error("save failed");
+    await loadWatchlist();
+  } catch (e) { alert("Could not save watchlist: " + e.message); }
+  $("saveWL").textContent = "+ Save Image 1 as Watchlist baseline"; $("saveWL").disabled = false;
+};
+
+$("wlCheckFile").onchange = async e => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f || !wlPendingCheckId) return;
+  const fd = new FormData(); fd.append("file", f);
+  try {
+    const r = await fetch(`/api/watchlist/${wlPendingCheckId}/check`, { method: "POST", body: fd });
+    if (!r.ok) throw new Error("check failed");
+    await loadWatchlist();
+  } catch (err) { alert("Could not check image: " + err.message); }
+  wlPendingCheckId = null;
 };
 </script>
 </body>
