@@ -14,60 +14,34 @@ for (const u of CDNS) { try { await import(u); console.log("Spline viewer loaded
 :root{--bg:#050816;--card:rgba(255,255,255,.06);--line:rgba(255,255,255,.12);--acc:#4da3ff;--acc2:#8a5cff;--tx:#e8ecff;--mut:#8b93b8}
 *{box-sizing:border-box;margin:0}html{scroll-behavior:smooth}
 body{background:var(--bg);color:var(--tx);font-family:Inter,system-ui,sans-serif}
-a{color:inherit}
-::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
-
-/* ================= PAGE ROUTER ================= */
-.page{display:none;min-height:100vh}
-.page.active{display:block;animation:pageIn .38s cubic-bezier(.2,.8,.2,1) both}
-@keyframes pageIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-
-/* ================= PUBLIC NAVBAR (Home page) ================= */
-#navbar{position:fixed;top:0;left:0;right:0;z-index:40;display:flex;align-items:center;justify-content:space-between;
-  padding:1.1rem 5vw;background:linear-gradient(#050816dd,transparent);backdrop-filter:blur(6px)}
-#navbar .brand{font-weight:800;font-size:1.1rem;display:flex;align-items:center;gap:.4rem;cursor:pointer}
-#navbar nav{display:flex;align-items:center;gap:1.8rem}
-#navbar nav a{color:var(--mut);text-decoration:none;font-size:.9rem}
-#navbar nav a:hover{color:var(--tx)}
-@media(max-width:800px){#navbar nav{display:none}}
-
-/* ================= HERO (Home page) ================= */
 #hero{position:relative;height:100vh;overflow:hidden;
   background:radial-gradient(circle at 70% 30%,#1b2a6b 0,transparent 45%),radial-gradient(circle at 20% 80%,#3a1b6b 0,transparent 40%),var(--bg)}
 #bg,#bg spline-viewer{position:absolute;inset:0;width:100%;height:100%}
-#sat{position:absolute;right:0;top:0;width:48%;height:100%;mix-blend-mode:screen;pointer-events:none}
+#sat{position:absolute;right:0;top:0;width:48%;height:100%;mix-blend-mode:screen;pointer-events:none} /* screen = dark scene bg turns see-through, particles show behind satellite; pointer-events:none = mouse reaches the particle scene everywhere (remove that bit to rotate the satellite) */
 #bg iframe,#sat spline-viewer,#sat iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 @media(max-width:900px){#sat{width:100%;opacity:.5}}
-#stars,#stars2{position:absolute;inset:0;width:100%;height:100%}
+.stars{position:absolute;inset:0;background-image:radial-gradient(3px 3px at 40px 50px,#fff,transparent),radial-gradient(2px 2px at 150px 130px,#cfe2ff,transparent),radial-gradient(4px 4px at 230px 40px,#fff,transparent),radial-gradient(2.5px 2.5px at 90px 210px,#b9a6ff,transparent);background-size:280px 280px;animation:drift 60s linear infinite;opacity:.9}
+@keyframes drift{to{background-position:-400px 400px}}
 .overlay{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:0 8vw;pointer-events:none;max-width:780px}
 .tag{color:var(--acc);letter-spacing:.2em;font-size:.8rem;text-transform:uppercase;margin-bottom:1rem}
 h1{font-size:clamp(3rem,9vw,7rem);line-height:1;font-weight:800}
 h1 span{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;color:transparent}
 .sub{color:var(--mut);font-size:1.2rem;margin:1.2rem 0 2rem;max-width:520px}
-.btn{pointer-events:auto;align-self:flex-start;padding:.9rem 2rem;border-radius:99px;color:#fff;text-decoration:none;font-weight:600;
-  background:linear-gradient(90deg,var(--acc),var(--acc2));box-shadow:0 0 30px #4da3ff66;transition:.2s;border:0;cursor:pointer;font-size:1rem;display:inline-flex;gap:.9rem}
+.btn{pointer-events:auto;align-self:flex-start;padding:.9rem 2rem;border-radius:99px;color:#fff;text-decoration:none;font-weight:600;background:linear-gradient(90deg,var(--acc),var(--acc2));box-shadow:0 0 30px #4da3ff66;transition:.2s}
 .btn:hover{transform:translateY(-2px);box-shadow:0 0 45px #8a5cffaa}
-.btn-ghost2{pointer-events:auto;padding:.9rem 1.6rem;border-radius:99px;color:var(--tx);text-decoration:none;font-weight:600;border:1px solid var(--line);background:#ffffff0d}
-.btn-ghost2:hover{border-color:var(--acc)}
-.scrolldown{position:absolute;bottom:1.6rem;left:50%;transform:translateX(-50%);color:var(--mut);font-size:.75rem;text-align:center;animation:bob 2s ease-in-out infinite;pointer-events:none}
-@keyframes bob{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,8px)}}
-
-/* ================= Shared panels / app UI (Analyze, History, Watchlist) ================= */
+#app{min-height:100vh;padding:5rem 5vw;display:grid;grid-template-columns:1fr 1.2fr;gap:1.5rem;max-width:1400px;margin:auto}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:1.4rem;backdrop-filter:blur(8px);contain:layout paint style}
-.panel{animation:riseIn .55s cubic-bezier(.2,.8,.2,1) both}
-@keyframes riseIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+#hero{content-visibility:auto;contain-intrinsic-size:100vh}
 h2{font-size:1.1rem;margin-bottom:1rem}
 #drop{border:2px dashed var(--line);border-radius:14px;padding:2rem;text-align:center;color:var(--mut);cursor:pointer;transition:.2s}
 #drop.over,#drop:hover{border-color:var(--acc);color:var(--tx);background:#4da3ff14}
 #grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin-top:1rem}
-.th{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;border:2px solid transparent;transition:.3s;animation:riseIn .35s ease both}
+.th{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;border:2px solid transparent;transition:.3s}
 .th img{width:100%;height:100%;object-fit:cover}
 .th b{position:absolute;left:4px;top:4px;background:#000a;border-radius:6px;font-size:.7rem;padding:1px 6px}
 .th i{position:absolute;right:4px;top:4px;background:#000a;border-radius:50%;width:18px;height:18px;font-size:.7rem;text-align:center;cursor:pointer;font-style:normal}
 .th.hit{border-color:var(--acc);box-shadow:0 0 18px var(--acc)}
-.analyze-grid{display:grid;grid-template-columns:1fr 1.2fr;gap:1.4rem;align-items:start}
-@media(max-width:1000px){.analyze-grid{grid-template-columns:1fr}}
-#chat{display:flex;flex-direction:column;height:74vh}
+#chat{display:flex;flex-direction:column;height:78vh}
 #msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:.8rem;padding-right:.3rem}
 .m{padding:.8rem 1rem;border-radius:14px;max-width:92%;line-height:1.5;font-size:.95rem}
 .u{align-self:flex-end;background:linear-gradient(90deg,var(--acc),var(--acc2))}
@@ -75,51 +49,95 @@ h2{font-size:1.1rem;margin-bottom:1rem}
 .chip{display:inline-block;font-size:.7rem;padding:2px 10px;border-radius:99px;background:#4da3ff33;color:var(--acc);margin-top:.6rem}
 .ev{color:var(--mut);font-size:.85rem;margin:.6rem 0 0 1rem}
 .rel{display:flex;gap:.5rem;margin-top:.7rem;flex-wrap:wrap}.rel div{width:74px;font-size:.7rem;text-align:center}.rel img{width:74px;height:74px;object-fit:cover;border-radius:8px;border:1px solid var(--acc)}
-.rel div img{transition:.25s}.rel div:hover img{transform:scale(1.06);box-shadow:0 0 16px var(--acc)}
 .chg{display:flex;gap:.8rem;margin-top:.8rem;font-size:.82rem;color:var(--mut);align-items:center}.chg img{width:150px;border-radius:8px;border:1px solid #ff5050}
 .sb{display:flex;height:6px;border-radius:3px;overflow:hidden;margin:3px 0}.sb span{display:block}
+#stars{position:absolute;inset:0;width:100%;height:100%}
 .dot{animation:p 1s infinite}@keyframes p{50%{opacity:.3}}
-.cu{font-weight:800}
 #chips{display:flex;gap:.5rem;flex-wrap:wrap;margin:.8rem 0}
 #chips button{background:none;border:1px solid var(--line);color:var(--mut);border-radius:99px;padding:.35rem .9rem;font-size:.8rem;cursor:pointer}
 #chips button:hover{color:var(--tx);border-color:var(--acc)}
 form{display:flex;gap:.6rem}
-input[type=text],input[type=email],input[type=password]{background:#ffffff0d;border:1px solid var(--line);border-radius:12px;padding:.85rem 1rem;color:var(--tx);outline:none}
-input[type=text]{flex:1}
-input[type=text]:focus,input[type=email]:focus,input[type=password]:focus{border-color:var(--acc)}
+input[type=text]{flex:1;background:#ffffff0d;border:1px solid var(--line);border-radius:12px;padding:.85rem 1rem;color:var(--tx);outline:none}
+input[type=text]:focus{border-color:var(--acc)}
 form button{border:0;border-radius:12px;padding:0 1.4rem;color:#fff;font-weight:600;cursor:pointer;background:linear-gradient(90deg,var(--acc),var(--acc2))}
-.hrow{background:#ffffff08;border:1px solid var(--line);border-radius:10px;padding:.75rem .9rem;font-size:.85rem;display:flex;justify-content:space-between;gap:.6rem;align-items:center;margin-bottom:.55rem}
+@media(max-width:900px){#app{grid-template-columns:1fr}#chat{height:70vh}}
+.side{display:flex;flex-direction:column;gap:1.5rem}
+.mini{max-height:230px;overflow-y:auto;display:flex;flex-direction:column;gap:.5rem;margin-top:.8rem}
+.hrow{background:#ffffff08;border:1px solid var(--line);border-radius:10px;padding:.6rem .7rem;font-size:.8rem;display:flex;justify-content:space-between;gap:.5rem;align-items:center}
 .hrow .txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;color:var(--tx)}
+.hrow .meta{color:var(--mut);font-size:.7rem}
 .pill{font-size:.65rem;padding:1px 8px;border-radius:99px;background:#4da3ff33;color:var(--acc);white-space:nowrap}
-.hrow a{color:var(--acc);text-decoration:none;font-size:.78rem;white-space:nowrap}
-.wl-item{background:#ffffff08;border:1px solid var(--line);border-radius:12px;padding:1rem;font-size:.85rem;margin-bottom:.8rem}
+.mini a{color:var(--acc);text-decoration:none;font-size:.75rem;white-space:nowrap}
+.wl-item{background:#ffffff08;border:1px solid var(--line);border-radius:10px;padding:.7rem;font-size:.82rem;margin-top:.6rem}
 .wl-item .top{display:flex;justify-content:space-between;align-items:center}
-.wl-item .alertbox{margin-top:.6rem;padding:.55rem .7rem;border-radius:8px;font-size:.8rem}
+.wl-item .alertbox{margin-top:.5rem;padding:.5rem .6rem;border-radius:8px;font-size:.78rem}
 .wl-item .alertbox.on{background:#ff505022;border:1px solid #ff5050;color:#ffb0b0}
-.wl-item .alertbox.on.pulseIn{animation:alertPulse .9s ease}
-@keyframes alertPulse{0%{transform:scale(.96);box-shadow:0 0 0 0 #ff505066}55%{transform:scale(1.015)}100%{transform:scale(1);box-shadow:0 0 0 14px #ff505000}}
 .wl-item .alertbox.off{background:#3fbf5f22;border:1px solid #3fbf5f;color:#b0ffc0}
-.smallbtn{font-size:.78rem;padding:.4rem .8rem;border-radius:8px;border:1px solid var(--line);background:#ffffff0d;color:var(--tx);cursor:pointer}
+.smallbtn{font-size:.72rem;padding:.3rem .7rem;border-radius:8px;border:1px solid var(--line);background:#ffffff0d;color:var(--tx);cursor:pointer}
 .smallbtn:hover{border-color:var(--acc)}
 .rpt-link{font-size:.72rem;color:var(--acc);text-decoration:none;margin-left:.6rem}
-.lockNote{color:var(--mut);font-size:.85rem;display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;padding:1.6rem 0}
+
+/* ---------- Auth widget + modal ---------- */
+#authPill{position:fixed;top:1.2rem;right:1.4rem;z-index:50;display:flex;align-items:center;gap:.6rem;
+  background:rgba(10,14,32,.55);border:1px solid var(--line);backdrop-filter:blur(14px);border-radius:99px;
+  padding:.45rem .6rem .45rem 1rem;font-size:.82rem;box-shadow:0 4px 24px #0006;animation:fadeDown .6s ease both}
+@keyframes fadeDown{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:translateY(0)}}
+#authPill button{border:0;border-radius:99px;padding:.4rem 1.1rem;font-weight:600;font-size:.8rem;cursor:pointer;
+  background:linear-gradient(90deg,var(--acc),var(--acc2));color:#fff;transition:.2s}
+#authPill button:hover{filter:brightness(1.15);transform:translateY(-1px)}
+#authPill .who{color:var(--tx)}#authPill .who b{color:var(--acc)}
+#authPill .logout{background:none;border:1px solid var(--line);color:var(--mut)}
+#authPill .logout:hover{color:#ff8080;border-color:#ff8080}
+#authModal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;
+  background:#02040ecc;backdrop-filter:blur(6px)}
+#authModal.show{display:flex;animation:fadeDown .25s ease both}
+.authCard{width:min(360px,90vw);background:linear-gradient(180deg,#131a36,#0a0e20);border:1px solid var(--line);
+  border-radius:18px;padding:1.6rem;box-shadow:0 20px 60px #000a,0 0 0 1px #ffffff08 inset}
+.authTabs{display:flex;gap:.4rem;margin-bottom:1.1rem;background:#ffffff0a;border-radius:99px;padding:.25rem}
+.authTabs button{flex:1;border:0;background:none;color:var(--mut);padding:.5rem;border-radius:99px;cursor:pointer;font-size:.85rem;font-weight:600;transition:.2s}
+.authTabs button.on{background:linear-gradient(90deg,var(--acc),var(--acc2));color:#fff}
+.authCard input{width:100%;background:#ffffff0d;border:1px solid var(--line);border-radius:10px;padding:.75rem .9rem;
+  color:var(--tx);outline:none;margin-bottom:.7rem;font-size:.9rem}
+.authCard input:focus{border-color:var(--acc)}
+.authCard .go{width:100%;border:0;border-radius:10px;padding:.8rem;font-weight:700;color:#fff;cursor:pointer;
+  background:linear-gradient(90deg,var(--acc),var(--acc2));box-shadow:0 0 24px #4da3ff55;transition:.2s}
+.authCard .go:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.authCard .go:disabled{opacity:.6;cursor:default;transform:none}
+.authErr{color:#ff8686;font-size:.8rem;margin:-.3rem 0 .7rem;min-height:1em}
+.authClose{float:right;background:none;border:0;color:var(--mut);font-size:1.1rem;cursor:pointer;line-height:1}
+.authClose:hover{color:var(--tx)}
+.lockNote{color:var(--mut);font-size:.8rem;display:flex;align-items:center;gap:.5rem}
+.lockNote button{margin-left:auto;flex-shrink:0}
+
+/* ---------- Wow-factor motion ---------- */
+.panel{animation:riseIn .55s cubic-bezier(.2,.8,.2,1) both}
+.side .panel:nth-child(2){animation-delay:.08s}.side .panel:nth-child(3){animation-delay:.16s}
+#chat{animation-delay:.1s}
+@keyframes riseIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
 .scan-wrap{display:flex;flex-direction:column;gap:.5rem}
 .scan-bar{position:relative;height:3px;border-radius:2px;background:#ffffff14;overflow:hidden}
 .scan-bar i{position:absolute;top:0;left:-30%;width:30%;height:100%;border-radius:2px;
   background:linear-gradient(90deg,transparent,var(--acc),var(--acc2),transparent);animation:scan 1.1s ease-in-out infinite}
 @keyframes scan{0%{left:-30%}100%{left:100%}}
 .scan-label{font-size:.85rem;color:var(--mut)}
-.empty-state{color:var(--mut);font-size:.88rem;text-align:center;padding:2.5rem 1rem}
+.cu{font-weight:800}
+.alertbox.on.pulseIn{animation:alertPulse .9s ease}
+@keyframes alertPulse{0%{transform:scale(.96);box-shadow:0 0 0 0 #ff505066}55%{transform:scale(1.015)}100%{transform:scale(1);box-shadow:0 0 0 14px #ff505000}}
+.th{animation:riseIn .35s ease both}
+.rel div img{transition:.25s}.rel div:hover img{transform:scale(1.06);box-shadow:0 0 16px var(--acc)}
+form button{position:relative;overflow:hidden}
 
-/* ================= Landing sections (Home page) ================= */
+/* ---------- Scroll-reveal landing sections ---------- */
 .reveal{opacity:0;transform:translateY(36px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1)}
 .reveal.in{opacity:1;transform:translateY(0)}
 .reveal.d1{transition-delay:.08s}.reveal.d2{transition-delay:.16s}.reveal.d3{transition-delay:.24s}.reveal.d4{transition-delay:.32s}
+
 .lp{max-width:1200px;margin:0 auto;padding:7rem 5vw;position:relative}
 .lp-head{text-align:center;margin-bottom:3.2rem}
 .lp-head .tag{color:var(--acc);letter-spacing:.2em;font-size:.78rem;text-transform:uppercase;margin-bottom:.7rem}
 .lp-head h2{font-size:clamp(1.8rem,4vw,2.6rem);font-weight:800;margin:0}
 .lp-head p{color:var(--mut);max-width:560px;margin:.8rem auto 0;font-size:1.02rem}
+
 .feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.4rem}
 .feat{background:linear-gradient(180deg,#ffffff0d,#ffffff03);border:1px solid var(--line);border-radius:20px;
   padding:1.8rem;transition:.35s;position:relative;overflow:hidden}
@@ -130,6 +148,7 @@ form button{border:0;border-radius:12px;padding:0 1.4rem;color:#fff;font-weight:
   background:linear-gradient(135deg,var(--acc),var(--acc2));margin-bottom:1.1rem;box-shadow:0 8px 24px #4da3ff44}
 .feat h3{font-size:1.08rem;margin-bottom:.5rem}
 .feat p{color:var(--mut);font-size:.9rem;line-height:1.55}
+
 .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:0;position:relative;counter-reset:stepnum}
 .steps::before{content:"";position:absolute;top:26px;left:12%;right:12%;height:2px;
   background:linear-gradient(90deg,var(--acc),var(--acc2));opacity:.35;z-index:0}
@@ -138,174 +157,22 @@ form button{border:0;border-radius:12px;padding:0 1.4rem;color:#fff;font-weight:
   font-weight:800;font-size:1.15rem;background:var(--bg);border:2px solid var(--acc);color:var(--acc);box-shadow:0 0 24px #4da3ff44}
 .step h4{font-size:.98rem;margin-bottom:.4rem}
 .step p{color:var(--mut);font-size:.84rem;line-height:1.5}
+
 .stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;text-align:center;
   background:linear-gradient(90deg,#4da3ff14,#8a5cff14);border:1px solid var(--line);border-radius:20px;padding:2.2rem 1rem}
 .stat b{display:block;font-size:clamp(1.6rem,3vw,2.3rem);font-weight:800;
   background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;color:transparent}
 .stat span{color:var(--mut);font-size:.8rem}
-.usecases-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.2rem}
-.usecase-card{text-align:center;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:1.6rem 1.2rem;backdrop-filter:blur(10px)}
-.usecase-card .circ{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem;margin:0 auto .9rem}
-.usecase-card h3{font-size:.95rem;margin-bottom:.4rem}
-.usecase-card p{color:var(--mut);font-size:.82rem;line-height:1.45}
-.cta-section{text-align:center;padding:5rem 8vw;background:linear-gradient(180deg,transparent,#4da3ff11);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.cta-section h2{font-size:clamp(1.6rem,3vw,2.2rem);margin-bottom:1rem}
-.cta-section p{color:var(--mut);margin-bottom:1.8rem}
-footer{padding:2.5rem 8vw;text-align:center;color:var(--mut);font-size:.82rem}
-footer b{color:var(--tx)}
-@media(max-width:900px){.feat-grid{grid-template-columns:1fr}.steps{grid-template-columns:1fr 1fr;row-gap:2rem}.steps::before{display:none}.stats-bar{grid-template-columns:1fr 1fr;gap:1.6rem}.usecases-grid{grid-template-columns:1fr 1fr}}
 
-/* ================= LOGIN PAGE (its own Spline scene + tint) ================= */
-#page-login{position:relative;overflow:hidden;display:none;min-height:100vh;
-  background:radial-gradient(circle at 50% 20%,#3a1b6b 0,transparent 50%),radial-gradient(circle at 80% 90%,#1b2a6b 0,transparent 45%),var(--bg)}
-#page-login.active{display:flex;align-items:center;justify-content:center}
-#loginBg{position:absolute;inset:0;width:100%;height:100%;opacity:.65}
-#loginBg spline-viewer,#loginBg iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
-.login-back{position:absolute;top:1.6rem;left:1.6rem;z-index:5;color:var(--mut);text-decoration:none;font-size:.85rem;display:flex;align-items:center;gap:.4rem}
-.login-back:hover{color:var(--tx)}
-.authCard{position:relative;z-index:2;width:min(380px,90vw);background:linear-gradient(180deg,#131a36ee,#0a0e20ee);border:1px solid var(--line);
-  border-radius:20px;padding:2rem;box-shadow:0 20px 60px #000a,0 0 0 1px #ffffff08 inset;backdrop-filter:blur(10px)}
-.authCard .brand2{text-align:center;font-weight:800;font-size:1.3rem;margin-bottom:.3rem}
-.authCard .sub2{text-align:center;color:var(--mut);font-size:.85rem;margin-bottom:1.4rem}
-.authTabs{display:flex;gap:.4rem;margin-bottom:1.1rem;background:#ffffff0a;border-radius:99px;padding:.25rem}
-.authTabs button{flex:1;border:0;background:none;color:var(--mut);padding:.55rem;border-radius:99px;cursor:pointer;font-size:.85rem;font-weight:600;transition:.2s}
-.authTabs button.on{background:linear-gradient(90deg,var(--acc),var(--acc2));color:#fff}
-.authCard input{width:100%;margin-bottom:.7rem}
-.authCard .go{width:100%;border:0;border-radius:10px;padding:.85rem;font-weight:700;color:#fff;cursor:pointer;
-  background:linear-gradient(90deg,var(--acc),var(--acc2));box-shadow:0 0 24px #4da3ff55;transition:.2s}
-.authCard .go:hover{filter:brightness(1.1);transform:translateY(-1px)}
-.authCard .go:disabled{opacity:.6;cursor:default;transform:none}
-.authErr{color:#ff8686;font-size:.8rem;margin:-.3rem 0 .7rem;min-height:1em}
-
-/* ================= APP SHELL (Dashboard / Analyze / History / Watchlist) ================= */
-.appwrap{display:flex;min-height:100vh}
-#sidebar{width:220px;flex-shrink:0;background:#080e24;border-right:1px solid var(--line);padding:1.3rem 1rem;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
-#sidebar .brand{font-weight:800;font-size:1.05rem;padding:.4rem .6rem 1.4rem;cursor:pointer}
-#sidebar .navitem{display:flex;align-items:center;gap:.7rem;padding:.7rem .9rem;border-radius:10px;color:var(--mut);cursor:pointer;font-size:.88rem;margin-bottom:.2rem;user-select:none}
-#sidebar .navitem .ic{font-size:1.05rem}
-#sidebar .navitem:hover{background:#ffffff0a;color:var(--tx)}
-#sidebar .navitem.on{background:linear-gradient(90deg,#4da3ff22,#8a5cff11);color:var(--tx);border:1px solid var(--line)}
-#sidebar .spacer{flex:1}
-#sidebar .userbox{border-top:1px solid var(--line);padding-top:1rem;font-size:.8rem}
-#sidebar .userbox .email{color:var(--tx);display:block;margin-bottom:.6rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#sidebar .userbox button{width:100%}
-.mobiletop{display:none}
-.pmain{flex:1;min-width:0;padding:2.4rem min(4vw,3rem)}
-.page-head{margin-bottom:1.8rem}
-.page-head h1{font-size:1.6rem;margin-bottom:.3rem}
-.page-head p{color:var(--mut);font-size:.9rem}
-.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.1rem;margin-bottom:2rem}
-.stat-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:1.3rem 1.4rem;animation:riseIn .5s ease both}
-.stat-card .n{font-size:1.9rem;font-weight:800}
-.stat-card .l{color:var(--mut);font-size:.82rem;margin-top:.2rem}
-.quick-actions{display:flex;gap:.9rem;margin-bottom:2rem;flex-wrap:wrap}
-
-@media(max-width:800px){
-  .appwrap{flex-direction:column}
-  #sidebar{display:none}
-  .mobiletop{display:flex;position:sticky;top:0;z-index:30;align-items:center;justify-content:space-between;
-    padding:.8rem 1.1rem;background:#080e24;border-bottom:1px solid var(--line);width:100%}
-  .mobiletop select{background:#ffffff0d;border:1px solid var(--line);color:var(--tx);border-radius:8px;padding:.4rem .6rem;font-size:.85rem}
-  .pmain{padding:1.4rem 4vw}
-  .stat-grid{grid-template-columns:1fr}
-}
+@media(max-width:900px){.feat-grid{grid-template-columns:1fr}.steps{grid-template-columns:1fr 1fr;row-gap:2rem}.steps::before{display:none}.stats-bar{grid-template-columns:1fr 1fr;gap:1.6rem}}
 </style>
 </head>
 <body>
+<div id="authPill"></div>
 
-<!-- ================= HOME (public landing) ================= -->
-<div class="page active" id="page-home">
-  <div id="navbar">
-    <div class="brand" onclick="goPage('home')">🛰️ SatQuery AI</div>
-    <nav>
-      <a href="#features-anchor">Features</a>
-      <a href="#how-anchor">How it Works</a>
-      <a href="#uses-anchor">Use Cases</a>
-    </nav>
-    <div>
-      <button type="button" class="btn-ghost2" style="padding:.55rem 1.2rem;font-size:.85rem" id="navLoginBtn">Log In</button>
-    </div>
-  </div>
-
-  <section id="hero">
-    <div id="bg"><canvas id="stars"></canvas></div>
-    <div id="sat"></div>
-    <div class="overlay">
-      <p class="tag">SIH26167 · Space Technology</p>
-      <h1>SatQuery<span> AI</span></h1>
-      <p class="sub">Upload satellite imagery. Ask in plain language. Get answers grounded in what the images actually show.</p>
-      <div style="display:flex;gap:.9rem;pointer-events:auto">
-        <button type="button" class="btn" id="heroGetStarted">Launch Analyst →</button>
-        <a class="btn-ghost2" href="#how-anchor">See how it works</a>
-      </div>
-    </div>
-    <div class="scrolldown">↓ scroll</div>
-  </section>
-
-  <section class="lp" id="features-anchor">
-    <div class="lp-head reveal">
-      <p class="tag">Why SatQuery AI</p>
-      <h2>One assistant. Every satellite question.</h2>
-      <p>A hybrid Vision-Language + classical CV engine that answers in plain language — and never guesses beyond the evidence.</p>
-    </div>
-    <div class="feat-grid">
-      <div class="feat reveal d1"><div class="ic">🛰️</div><h3>Grounded Answers</h3><p>Every response is backed by real pixel-level measurements, not just a VLM's visual impression — with a confidence score attached.</p></div>
-      <div class="feat reveal d2"><div class="ic">🔀</div><h3>Automatic Change Detection</h3><p>ECC alignment, Lab-space diffing and Otsu thresholding compare any two dates and isolate genuine land-cover change.</p></div>
-      <div class="feat reveal d3"><div class="ic">🚨</div><h3>Watchlist Alerts</h3><p>Save an area as a baseline once. Every future check is compared automatically — with an instant alert if something changed.</p></div>
-    </div>
-  </section>
-
-  <section class="lp" id="how-anchor">
-    <div class="lp-head reveal">
-      <p class="tag">How it works</p>
-      <h2>From imagery to insight in four steps</h2>
-    </div>
-    <div class="steps">
-      <div class="step reveal d1"><div class="n">1</div><h4>Upload Imagery</h4><p>Up to 16 satellite images — a single scene, or oldest → newest for change tracking.</p></div>
-      <div class="step reveal d2"><div class="n">2</div><h4>Ask in Plain Language</h4><p>Hindi or English — describe, compare, measure, locate, or count.</p></div>
-      <div class="step reveal d3"><div class="n">3</div><h4>Router + CV + VLM Reason Together</h4><p>Intent detection, land-cover analytics and Gemini reasoning combine on the evidence.</p></div>
-      <div class="step reveal d4"><div class="n">4</div><h4>Grounded Answer + Alerts</h4><p>Get a confidence-scored answer, a downloadable report, and ongoing watchlist monitoring.</p></div>
-    </div>
-  </section>
-
-  <section class="lp" style="padding-top:0">
-    <div class="stats-bar reveal">
-      <div class="stat"><b class="cu" data-target="16" data-suffix="">0</b><span>Images per analysis</span></div>
-      <div class="stat"><b class="cu" data-target="8" data-suffix="">0</b><span>Query intents understood</span></div>
-      <div class="stat"><b class="cu" data-target="100" data-suffix="%">0</b><span>Evidence-grounded answers</span></div>
-      <div class="stat"><b class="cu" data-target="24" data-suffix="">0</b><span>Continuous monitoring</span></div>
-    </div>
-  </section>
-
-  <section class="lp" id="uses-anchor">
-    <div class="lp-head reveal">
-      <p class="tag">Use cases</p>
-      <h2>Built for anyone who reads imagery</h2>
-    </div>
-    <div class="usecases-grid">
-      <div class="usecase-card reveal d1"><div class="circ" style="background:#3fbf5f33">🌳</div><h3>Environmental</h3><p>Spot deforestation or encroachment early in protected forest areas.</p></div>
-      <div class="usecase-card reveal d2"><div class="circ" style="background:#4da3ff33">🏛️</div><h3>Governance</h3><p>Fast, natural-language monitoring for authorities without GIS training.</p></div>
-      <div class="usecase-card reveal d3"><div class="circ" style="background:#ff505033">🚨</div><h3>Disaster Response</h3><p>Rapid before/after damage assessment after floods or other disasters.</p></div>
-      <div class="usecase-card reveal d4"><div class="circ" style="background:#8a5cff33">🎓</div><h3>Education</h3><p>Makes remote-sensing analysis accessible to students and researchers.</p></div>
-    </div>
-  </section>
-
-  <section class="cta-section reveal">
-    <h2>Ready to analyze your imagery?</h2>
-    <p>Create a free account — it takes ten seconds.</p>
-    <button type="button" class="btn" style="margin:0 auto" id="ctaGetStarted">Get Started Free →</button>
-  </section>
-
-  <footer><b>SatQuery AI</b> · SIH26167 · Space Technology</footer>
-</div>
-
-<!-- ================= LOGIN / SIGNUP (dedicated page) ================= -->
-<div class="page" id="page-login">
-  <a class="login-back" href="javascript:void(0)" onclick="goPage('home')">← Back to Home</a>
-  <div id="loginBg"><canvas id="stars2"></canvas></div>
+<div id="authModal">
   <div class="authCard">
-    <div class="brand2">🛰️ SatQuery AI</div>
-    <div class="sub2" id="authSub2">Log in to see your own analyses and watchlist.</div>
+    <button class="authClose" type="button" id="authClose">✕</button>
     <div class="authTabs">
       <button type="button" id="tabLogin" class="on">Log In</button>
       <button type="button" id="tabSignup">Sign Up</button>
@@ -317,248 +184,163 @@ footer b{color:var(--tx)}
   </div>
 </div>
 
-<!-- ================= DASHBOARD ================= -->
-<div class="page" id="page-dashboard">
-  <div class="appwrap">
-    <div class="mobiletop"><b>🛰️ SatQuery AI</b><select class="mobilenav">
-      <option value="dashboard">Dashboard</option><option value="analyze">Analyze</option>
-      <option value="history">History</option><option value="watchlist">Watchlist</option></select></div>
-    <div id="sidebar-slot"></div>
-    <div class="pmain">
-      <div class="page-head"><h1>Welcome back 👋</h1><p>Here's what's happening with your imagery.</p></div>
-      <div id="dashLocked"></div>
-      <div id="dashBody" style="display:none">
-        <div class="stat-grid">
-          <div class="stat-card"><div class="n" id="statAnalyses">–</div><div class="l">Recent analyses</div></div>
-          <div class="stat-card"><div class="n" id="statWatchlist">–</div><div class="l">Watchlist areas</div></div>
-          <div class="stat-card"><div class="n" id="statAlerts">–</div><div class="l">Active alerts</div></div>
-        </div>
-        <div class="quick-actions">
-          <button type="button" class="btn" style="padding:.7rem 1.3rem" onclick="goPage('analyze')">+ New Analysis</button>
-          <button type="button" class="btn-ghost2" onclick="goPage('watchlist')">+ Add Watchlist Area</button>
-        </div>
-        <div class="panel"><h2>Recent Activity</h2><div id="recentList"></div></div>
-      </div>
-    </div>
+<section id="hero">
+  <div id="bg"><canvas id="stars"></canvas></div>
+  <div id="sat"></div>
+  <div class="overlay">
+    <p class="tag">SIH26167 · Space Technology</p>
+    <h1>SatQuery<span> AI</span></h1>
+    <p class="sub">Upload satellite imagery. Ask in plain language. Get answers grounded in what the images actually show.</p>
+    <a class="btn" href="#app">Launch Analyst →</a>
   </div>
-</div>
+</section>
 
-<!-- ================= ANALYZE ================= -->
-<div class="page" id="page-analyze">
-  <div class="appwrap">
-    <div class="mobiletop"><b>🛰️ SatQuery AI</b><select class="mobilenav">
-      <option value="dashboard">Dashboard</option><option value="analyze" selected>Analyze</option>
-      <option value="history">History</option><option value="watchlist">Watchlist</option></select></div>
-    <div id="sidebar-slot2"></div>
-    <div class="pmain">
-      <div class="page-head"><h1>Analyze Imagery</h1><p>Upload images (oldest → newest for change detection), then ask anything.</p></div>
-      <div class="analyze-grid">
-        <div class="panel">
-          <h2>🛰️ Imagery <span id="count" style="color:var(--mut)">(0/16)</span></h2>
-          <div id="drop">Drop up to 16 satellite images here or click to browse</div>
-          <input id="file" type="file" accept="image/*" multiple hidden>
-          <div id="grid"></div>
-        </div>
-        <div class="panel" id="chat">
-          <h2>💬 Ask SatQuery</h2>
-          <div id="msgs"><div class="m a">Upload your images (for change detection, upload <b>oldest → newest</b>), then ask anything: land use, water, vegetation, urban growth, damage, or comparisons between images.</div></div>
-          <div id="chips"></div>
-          <form id="f"><input id="q" type="text" placeholder="e.g. Which images contain water bodies?" autocomplete="off"><button>Send</button></form>
-        </div>
-      </div>
-    </div>
+<section class="lp">
+  <div class="lp-head reveal">
+    <p class="tag">Why SatQuery AI</p>
+    <h2>One assistant. Every satellite question.</h2>
+    <p>A hybrid Vision-Language + classical CV engine that answers in plain language — and never guesses beyond the evidence.</p>
   </div>
-</div>
-
-<!-- ================= HISTORY ================= -->
-<div class="page" id="page-history">
-  <div class="appwrap">
-    <div class="mobiletop"><b>🛰️ SatQuery AI</b><select class="mobilenav">
-      <option value="dashboard">Dashboard</option><option value="analyze">Analyze</option>
-      <option value="history" selected>History</option><option value="watchlist">Watchlist</option></select></div>
-    <div id="sidebar-slot3"></div>
-    <div class="pmain">
-      <div class="page-head"><h1>Analysis History</h1><p>Every question you've asked, with a downloadable PDF report.</p></div>
-      <div class="panel"><div id="histList">No past analyses yet — ask something!</div></div>
-    </div>
+  <div class="feat-grid">
+    <div class="feat reveal d1"><div class="ic">🛰️</div><h3>Grounded Answers</h3><p>Every response is backed by real pixel-level measurements, not just a VLM's visual impression — with a confidence score attached.</p></div>
+    <div class="feat reveal d2"><div class="ic">🔀</div><h3>Automatic Change Detection</h3><p>ECC alignment, Lab-space diffing and Otsu thresholding compare any two dates and isolate genuine land-cover change.</p></div>
+    <div class="feat reveal d3"><div class="ic">🚨</div><h3>Watchlist Alerts</h3><p>Save an area as a baseline once. Every future check is compared automatically — with an instant alert if something changed.</p></div>
   </div>
-</div>
+</section>
 
-<!-- ================= WATCHLIST ================= -->
-<div class="page" id="page-watchlist">
-  <div class="appwrap">
-    <div class="mobiletop"><b>🛰️ SatQuery AI</b><select class="mobilenav">
-      <option value="dashboard">Dashboard</option><option value="analyze">Analyze</option>
-      <option value="history">History</option><option value="watchlist" selected>Watchlist</option></select></div>
-    <div id="sidebar-slot4"></div>
-    <div class="pmain">
-      <div class="page-head"><h1>Watchlist</h1><p>Save a baseline image for an area, then check new imagery against it any time.</p></div>
-      <div class="quick-actions">
-        <button type="button" class="smallbtn" id="saveWL">+ Save Image 1 as Watchlist baseline</button>
-      </div>
+<section class="lp">
+  <div class="lp-head reveal">
+    <p class="tag">How it works</p>
+    <h2>From imagery to insight in four steps</h2>
+  </div>
+  <div class="steps">
+    <div class="step reveal d1"><div class="n">1</div><h4>Upload Imagery</h4><p>Up to 16 satellite images — a single scene, or oldest → newest for change tracking.</p></div>
+    <div class="step reveal d2"><div class="n">2</div><h4>Ask in Plain Language</h4><p>Hindi or English — describe, compare, measure, locate, or count.</p></div>
+    <div class="step reveal d3"><div class="n">3</div><h4>Router + CV + VLM Reason Together</h4><p>Intent detection, land-cover analytics and Gemini reasoning combine on the evidence.</p></div>
+    <div class="step reveal d4"><div class="n">4</div><h4>Grounded Answer + Alerts</h4><p>Get a confidence-scored answer, a downloadable report, and ongoing watchlist monitoring.</p></div>
+  </div>
+</section>
+
+<section class="lp" style="padding-top:0">
+  <div class="stats-bar reveal">
+    <div class="stat"><b class="cu" data-target="16" data-suffix="">0</b><span>Images per analysis</span></div>
+    <div class="stat"><b class="cu" data-target="8" data-suffix="">0</b><span>Query intents understood</span></div>
+    <div class="stat"><b class="cu" data-target="100" data-suffix="%">0</b><span>Evidence-grounded answers</span></div>
+    <div class="stat"><b class="cu" data-target="24" data-suffix="">0</b><span>Continuous monitoring</span></div>
+  </div>
+</section>
+
+<main id="app">
+  <div class="side">
+    <div class="panel">
+      <h2>🛰️ Imagery <span id="count" style="color:var(--mut)">(0/16)</span></h2>
+      <div id="drop">Drop up to 16 satellite images here or click to browse</div>
+      <input id="file" type="file" accept="image/*" multiple hidden>
+      <div id="grid"></div>
+    </div>
+    <div class="panel">
+      <h2>🕒 History</h2>
+      <div class="mini" id="histList" style="margin-top:.4rem;color:var(--mut);font-size:.8rem">No past analyses yet — ask something!</div>
+    </div>
+    <div class="panel">
+      <h2>🚨 Watchlist <span style="color:var(--mut);font-weight:400;font-size:.75rem">(auto-alert on new imagery)</span></h2>
+      <button type="button" class="smallbtn" id="saveWL" style="margin-top:.4rem">+ Save Image 1 as Watchlist baseline</button>
       <input id="wlCheckFile" type="file" accept="image/*" hidden>
-      <div id="wlList">No watchlist areas saved yet.</div>
+      <div id="wlList" style="margin-top:.6rem;color:var(--mut);font-size:.8rem">No watchlist areas saved yet.</div>
     </div>
   </div>
-</div>
-
-<template id="sidebarTpl">
-  <div id="sidebar">
-    <div class="brand" onclick="goPage('home')">🛰️ SatQuery AI</div>
-    <div class="navitem" data-page="dashboard"><span class="ic">🏠</span> Dashboard</div>
-    <div class="navitem" data-page="analyze"><span class="ic">💬</span> Analyze</div>
-    <div class="navitem" data-page="history"><span class="ic">🕒</span> History</div>
-    <div class="navitem" data-page="watchlist"><span class="ic">🚨</span> Watchlist</div>
-    <div class="spacer"></div>
-    <div class="userbox" id="sidebarUserbox"></div>
+  <div class="panel" id="chat">
+    <h2>💬 Ask SatQuery</h2>
+    <div id="msgs"><div class="m a">Upload your images (for change detection, upload <b>oldest → newest</b>), then ask anything: land use, water, vegetation, urban growth, damage, or comparisons between images.</div></div>
+    <div id="chips"></div>
+    <form id="f"><input id="q" type="text" placeholder="e.g. Which images contain water bodies?" autocomplete="off"><button>Send</button></form>
   </div>
-</template>
+</main>
 
 <script>
 const $ = id => document.getElementById(id);
+const SPLINE_BG_URL  = "https://prod.spline.design/ja7rpTyvpIRNkP55/scene.splinecode"; // scene 1: particle sphere  -> full-screen background
+const SPLINE_SAT_URL = "https://prod.spline.design/JWpzh9ThuZsAjk2i/scene.splinecode"; // scene 2: green satellite    -> right side of hero
+// Accepts a ...scene.splinecode link (Code Export > Viewer) or a public my.spline.design link.
+function mount(id, url) {
+  if (!url) return;
+  let el;
+  if (url.includes(".splinecode")) { el = document.createElement("spline-viewer"); el.setAttribute("url", url); }
+  else { el = document.createElement("iframe"); el.src = url; el.setAttribute("frameborder", "0"); }
+  el.addEventListener("error", e => console.warn("Spline error", url, e)); $(id).append(el);
+}
+mount("bg", SPLINE_BG_URL); mount("sat", SPLINE_SAT_URL);
 
-/* =========================================================================
-   SIDEBAR: one template, cloned into each app page so the four inner pages
-   (Dashboard/Analyze/History/Watchlist) share identical navigation.
-   ========================================================================= */
-function buildSidebars() {
-  ["sidebar-slot", "sidebar-slot2", "sidebar-slot3", "sidebar-slot4"].forEach(slotId => {
-    const slot = $(slotId); if (!slot) return;
-    slot.appendChild($("sidebarTpl").content.cloneNode(true));
-  });
-  document.querySelectorAll("#sidebar .navitem").forEach(n => n.onclick = () => goPage(n.dataset.page));
-  document.querySelectorAll(".mobilenav").forEach(sel => sel.onchange = e => goPage(e.target.value));
-  renderSidebarUsers();
-}
-function renderSidebarUsers() {
-  document.querySelectorAll(".userbox").forEach(box => {
-    box.innerHTML = authToken
-      ? `<span class="email">👤 ${esc(authEmail)}</span><button type="button" class="smallbtn logoutBtn2">Log Out</button>`
-      : `<span class="email" style="color:var(--mut)">Not logged in</span><button type="button" class="smallbtn loginBtn2">Log In</button>`;
-  });
-  document.querySelectorAll(".logoutBtn2").forEach(b => b.onclick = doLogout);
-  document.querySelectorAll(".loginBtn2").forEach(b => b.onclick = () => goPage("login"));
-}
-buildSidebars();
-
-/* =========================================================================
-   ROUTER: each nav click is a real page switch (scrolls to top, mounts /
-   unmounts the right 3D scene) -- not just scrolling down one long page.
-   =========================================================================*/
-const PAGES = ["home", "login", "dashboard", "analyze", "history", "watchlist"];
-let currentPage = "home";
-function goPage(name) {
-  if (!PAGES.includes(name)) name = "home";
-  const prev = currentPage; currentPage = name;
-  document.querySelectorAll(".page").forEach(p => p.classList.toggle("active", p.id === "page-" + name));
-  document.querySelectorAll("#sidebar .navitem").forEach(n => n.classList.toggle("on", n.dataset.page === name));
-  document.querySelectorAll(".mobilenav").forEach(sel => { if (["dashboard","analyze","history","watchlist"].includes(name)) sel.value = name; });
-  window.scrollTo(0, 0);
-  if (prev === "home" && name !== "home") unmountHomeHero();
-  if (name === "home") mountHomeHero();
-  if (prev === "login" && name !== "login") unmountLoginScene();
-  if (name === "login") mountLoginScene();
-  if (name === "dashboard") renderDashboard();
-  if (name === "history") loadHistory();
-  if (name === "watchlist") loadWatchlist();
-  location.hash = name === "home" ? "" : name;
-}
-addEventListener("hashchange", () => { const h = location.hash.slice(1); if (h && PAGES.includes(h)) goPage(h); });
-$("navLoginBtn").onclick = () => goPage("login");
-$("heroGetStarted").onclick = () => authToken ? goPage("dashboard") : goPage("login");
-$("ctaGetStarted").onclick = () => goPage("login");
-
-/* =========================================================================
-   SPLINE SCENES -- mounted/unmounted per page so only one heavy 3D scene
-   ever runs at a time (Home's two scenes, OR Login's single scene, never
-   both, and neither while you're actually using the app on the inner pages).
-   ========================================================================= */
-const SPLINE_BG_URL  = "https://prod.spline.design/ja7rpTyvpIRNkP55/scene.splinecode"; // particle sphere
-const SPLINE_SAT_URL = "https://prod.spline.design/JWpzh9ThuZsAjk2i/scene.splinecode"; // green satellite
-
-function makeSplineEl(url) {
-  if (url.includes(".splinecode")) { const el = document.createElement("spline-viewer"); el.setAttribute("url", url); return el; }
-  const el = document.createElement("iframe"); el.src = url; el.setAttribute("frameborder", "0"); return el;
-}
-let homeMounted = false;
-function mountHomeHero() {
-  if (homeMounted) return; homeMounted = true;
-  if (SPLINE_BG_URL) { const el = makeSplineEl(SPLINE_BG_URL); el.addEventListener("error", e => console.warn("Spline error", e)); $("bg").appendChild(el); }
-  if (SPLINE_SAT_URL) { const el = makeSplineEl(SPLINE_SAT_URL); el.addEventListener("error", e => console.warn("Spline error", e)); $("sat").appendChild(el); }
-  startStars($("stars"), () => homeMounted && !SPLINE_BG_URL);
-}
-function unmountHomeHero() {
-  if (!homeMounted) return; homeMounted = false;
-  $("bg").querySelectorAll("spline-viewer, iframe").forEach(e => e.remove());
-  $("sat").querySelectorAll("spline-viewer, iframe").forEach(e => e.remove());
-  stopStars($("stars"));
-}
-let loginMounted = false;
-function mountLoginScene() {
-  if (loginMounted) return; loginMounted = true;
-  if (SPLINE_BG_URL) { const el = makeSplineEl(SPLINE_BG_URL); $("loginBg").appendChild(el); }
-  else startStars($("stars2"), () => loginMounted);
-}
-function unmountLoginScene() {
-  if (!loginMounted) return; loginMounted = false;
-  $("loginBg").querySelectorAll("spline-viewer, iframe").forEach(e => e.remove());
-  stopStars($("stars2"));
-}
-mountHomeHero(); // Home is the initial page
-
-// Lightweight fallback starfield (used only if the Spline CDN/URL above fails to load).
-// Draws only while its own page is the active page (isActive() checked every frame).
-function startStars(c, isActive) {
-  if (!c || c._raf || SPLINE_BG_URL) return;
+// Fallback starfield (shown until Spline URLs are set): random twinkling stars, mouse parallax, shooting stars
+(function () {
+  const c = document.getElementById("stars"); if (!c) return;
   const x = c.getContext("2d"), R = window.devicePixelRatio || 1; let W, H, mx = 0, my = 0, shots = [];
   const size = () => { W = c.width = c.offsetWidth * R; H = c.height = c.offsetHeight * R; };
   size(); addEventListener("resize", size);
-  const S = Array.from({ length: 180 }, () => ({ x: Math.random(), y: Math.random(), r: Math.random() ** 3 * 2.6 + .6,
+  const S = Array.from({ length: 260 }, () => ({ x: Math.random(), y: Math.random(), r: Math.random() ** 3 * 2.6 + .6,
     d: Math.random() * .8 + .2, p: Math.random() * 6.28, t: Math.random() * .02 + .005 }));
-  const onMove = e => { mx = e.clientX / innerWidth - .5; my = e.clientY / innerHeight - .5; };
-  addEventListener("mousemove", onMove, { passive: true });
-  function draw() {
-    if (!isActive()) { c._raf = null; return; }
+  addEventListener("mousemove", e => { mx = e.clientX / innerWidth - .5; my = e.clientY / innerHeight - .5; }, { passive: true });
+
+  // Perf fix: only animate while the hero section is actually visible (stops the draw loop
+  // entirely once the user scrolls past it, instead of burning CPU/GPU in the background forever).
+  let heroVisible = true;
+  const heroEl = document.getElementById("hero");
+  if (heroEl && "IntersectionObserver" in window) {
+    new IntersectionObserver(es => { heroVisible = es[0].isIntersecting; }, { threshold: 0 }).observe(heroEl);
+  }
+
+  (function draw() {
+    if (!c.isConnected) return;            // stops automatically once a Spline scene replaces it
+    if (!heroVisible) { requestAnimationFrame(draw); return; }   // skip drawing (and the costly shadowBlur) while off-screen
     x.clearRect(0, 0, W, H);
+    x.shadowColor = "#9ec5ff"; x.shadowBlur = 3;   // fixed, small blur once per frame instead of per-star (was the main jank source)
     S.forEach(s => {
       s.p += s.t;
       const px = (s.x * W - mx * s.d * 40 * R + W) % W, py = (s.y * H - my * s.d * 40 * R + H) % H;
       x.globalAlpha = .55 + .45 * Math.sin(s.p); x.fillStyle = s.r > 2 ? "#cfe2ff" : "#fff";
       x.beginPath(); x.arc(px, py, s.r * R, 0, 6.283); x.fill();
     });
+    x.shadowBlur = 0;
     if (Math.random() < .008) shots.push({ x: Math.random() * W * .8, y: Math.random() * H * .4, l: 0 });
     shots = shots.filter(t => t.l < 45);
     shots.forEach(t => {
       t.l++; t.x += 16 * R; t.y += 8 * R; x.globalAlpha = 1 - t.l / 45; x.strokeStyle = "#fff"; x.lineWidth = 2 * R;
       x.beginPath(); x.moveTo(t.x - 90 * R, t.y - 45 * R); x.lineTo(t.x, t.y); x.stroke();
     });
-    c._raf = requestAnimationFrame(draw);
-  }
-  c._raf = requestAnimationFrame(draw);
-  c._cleanup = () => removeEventListener("mousemove", onMove);
-}
-function stopStars(c) { if (!c) return; if (c._raf) cancelAnimationFrame(c._raf); c._raf = null; if (c._cleanup) c._cleanup(); }
+    requestAnimationFrame(draw);
+  })();
+})();
+
 
 let files = [], history = [];
 const esc = s => s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 const fmt = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\n/g, "<br>");
 
-// ==================== Auth (same endpoints/tokens as before, now driving page nav instead of a modal) ====================
+// ==================== Auth ====================
 let authToken = localStorage.getItem("sq_token") || null;
 let authEmail = localStorage.getItem("sq_email") || null;
 let authMode = "login";
 const authHeaders = () => authToken ? { "Authorization": "Bearer " + authToken } : {};
 
-function setAuthTab(mode) {
+function renderAuthPill() {
+  $("authPill").innerHTML = authToken
+    ? `<span class="who">👤 <b>${esc(authEmail)}</b></span><button type="button" class="logout" id="logoutBtn">Log Out</button>`
+    : `<button type="button" id="openAuth">Log In / Sign Up</button>`;
+  if (authToken) $("logoutBtn").onclick = doLogout;
+  else $("openAuth").onclick = () => openAuthModal("login");
+}
+function openAuthModal(mode) {
   authMode = mode; $("authErr").textContent = "";
   $("tabLogin").classList.toggle("on", mode === "login");
   $("tabSignup").classList.toggle("on", mode === "signup");
   $("authGo").textContent = mode === "login" ? "Log In" : "Create Account";
-  $("authSub2").textContent = mode === "login" ? "Log in to see your own analyses and watchlist."
-                                                : "Sign up to get your own private analyses and watchlist.";
+  $("authModal").classList.add("show");
+  $("authEmail").focus();
 }
-$("tabLogin").onclick = () => setAuthTab("login");
-$("tabSignup").onclick = () => setAuthTab("signup");
+$("tabLogin").onclick = () => openAuthModal("login");
+$("tabSignup").onclick = () => openAuthModal("signup");
+$("authClose").onclick = () => $("authModal").classList.remove("show");
+$("authModal").onclick = e => { if (e.target.id === "authModal") $("authModal").classList.remove("show"); };
 [$("authEmail"), $("authPass")].forEach(inp => inp.onkeydown = e => { if (e.key === "Enter") $("authGo").click(); });
 
 $("authGo").onclick = async () => {
@@ -572,8 +354,8 @@ $("authGo").onclick = async () => {
     if (!r.ok) throw new Error(d.error || "Something went wrong");
     authToken = d.token; authEmail = d.email;
     localStorage.setItem("sq_token", authToken); localStorage.setItem("sq_email", authEmail);
-    $("authEmail").value = ""; $("authPass").value = "";
-    renderSidebarUsers(); goPage("dashboard");
+    $("authModal").classList.remove("show"); $("authEmail").value = ""; $("authPass").value = "";
+    renderAuthPill(); loadHistory(); loadWatchlist();
   } catch (e) { $("authErr").textContent = e.message; }
   $("authGo").disabled = false; $("authGo").textContent = authMode === "login" ? "Log In" : "Create Account";
 };
@@ -582,13 +364,16 @@ async function doLogout() {
   try { await fetch("/api/auth/logout", { method: "POST", headers: authHeaders() }); } catch (e) {}
   authToken = null; authEmail = null;
   localStorage.removeItem("sq_token"); localStorage.removeItem("sq_email");
-  renderSidebarUsers(); goPage("home");
+  renderAuthPill();
+  $("histList").innerHTML = "No past analyses yet — ask something!";
+  $("wlList").innerHTML = lockedNote();
 }
-function lockedNote(msg) {
-  return `<div class="lockNote">🔒 ${msg || "Log in to use this"} <button type="button" class="smallbtn" onclick="goPage('login')">Log In</button></div>`;
+function lockedNote() {
+  return `<div class="lockNote">🔒 Log in to use this <button type="button" class="smallbtn" onclick="openAuthModal('login')">Log In</button></div>`;
 }
+renderAuthPill();
 
-// ==================== Wow-factor helpers (unchanged) ====================
+// ==================== Wow-factor helpers ====================
 function typeText(el, text, onDone, targetFrames = 110, speed = 14) {
   el.style.whiteSpace = "pre-wrap"; el.textContent = "";
   const step = Math.max(1, Math.ceil(text.length / targetFrames)); let i = 0;
@@ -606,17 +391,8 @@ function animateCount(el, target, decimals = 1, duration = 900, suffix = "%") {
   }
   requestAnimationFrame(step);
 }
-function scanLoader() {
-  const phrases = ["Reading pixels…", "Running CV analytics…", "Aligning imagery…", "Consulting the AI model…", "Grounding the answer in evidence…"];
-  let idx = 0;
-  const wrap = document.createElement("div"); wrap.className = "scan-wrap";
-  wrap.innerHTML = `<div class="scan-label">${phrases[0]}</div><div class="scan-bar"><i></i></div>`;
-  const label = wrap.querySelector(".scan-label");
-  const timer = setInterval(() => { idx = (idx + 1) % phrases.length; label.textContent = phrases[idx]; }, 1100);
-  return { el: wrap, stop: () => clearInterval(timer) };
-}
 
-// ---------------- Scroll-reveal for landing sections (unchanged) ----------------
+// ---------------- Scroll-reveal for landing sections ----------------
 if ("IntersectionObserver" in window) {
   const revealObs = new IntersectionObserver(entries => {
     entries.forEach(en => {
@@ -630,14 +406,24 @@ if ("IntersectionObserver" in window) {
   }, { threshold: .15, rootMargin: "0px 0px -40px 0px" });
   document.querySelectorAll(".reveal").forEach(el => revealObs.observe(el));
 } else {
-  document.querySelectorAll(".reveal").forEach(el => el.classList.add("in"));
+  document.querySelectorAll(".reveal").forEach(el => el.classList.add("in")); // no-JS/old-browser fallback
 }
+
+// ---------------- Subtle scroll parallax on the 3D object ----------------
 addEventListener("scroll", () => {
-  if (currentPage !== "home") return;
   const y = Math.min(scrollY, innerHeight);
   const satEl = $("sat");
   if (satEl) satEl.style.transform = `translateY(${y * 0.18}px) scale(${1 + y * .00025})`;
 }, { passive: true });
+function scanLoader() {
+  const phrases = ["Reading pixels…", "Running CV analytics…", "Aligning imagery…", "Consulting the AI model…", "Grounding the answer in evidence…"];
+  let idx = 0;
+  const wrap = document.createElement("div"); wrap.className = "scan-wrap";
+  wrap.innerHTML = `<div class="scan-label">${phrases[0]}</div><div class="scan-bar"><i></i></div>`;
+  const label = wrap.querySelector(".scan-label");
+  const timer = setInterval(() => { idx = (idx + 1) % phrases.length; label.textContent = phrases[idx]; }, 1100);
+  return { el: wrap, stop: () => clearInterval(timer) };
+}
 
 ["Which images contain water bodies?","Compare vegetation vs urban area","Any roads, buildings or airports?","Rank images by greenness"]
   .forEach(t => { const b = document.createElement("button"); b.type="button"; b.textContent=t; b.onclick=()=>{$("q").value=t;$("f").requestSubmit()}; $("chips").append(b); });
@@ -708,39 +494,33 @@ $("f").onsubmit = async e => {
   $("msgs").scrollTop = 1e9;
 };
 
-// ---------------- History (History page + Dashboard's Recent Activity) ----------------
-function historyRowHtml(h) {
-  return `<div class="hrow">
-    <span class="txt" title="${esc(h.prompt)}">${esc(h.prompt)}</span>
-    <span class="pill">${esc(h.confidence || "?")}</span>
-    <a href="/api/report/${h.id}" target="_blank">PDF</a>
-  </div>`;
-}
+// ---------------- History panel (login required) ----------------
 async function loadHistory() {
-  if (!authToken) { $("histList").innerHTML = lockedNote("Log in to see your analysis history"); return; }
+  if (!authToken) { $("histList").innerHTML = lockedNote(); return; }
   try {
     const r = await fetch("/api/history", { headers: authHeaders() });
-    if (r.status === 401) { $("histList").innerHTML = lockedNote("Session expired -- please log in again"); return; }
+    if (r.status === 401) { $("histList").innerHTML = lockedNote(); return; }
     const rows = await r.json();
-    $("histList").innerHTML = rows.length ? rows.map(historyRowHtml).join("") : "No past analyses yet — ask something!";
-    if ($("recentList")) {
-      $("recentList").innerHTML = rows.length ? rows.slice(0, 5).map(historyRowHtml).join("")
-        : '<div class="empty-state">No analyses yet — start one from the Analyze tab.</div>';
-    }
-    if ($("statAnalyses")) $("statAnalyses").textContent = rows.length;
+    if (!rows.length) { $("histList").innerHTML = "No past analyses yet — ask something!"; return; }
+    $("histList").innerHTML = rows.map(h => `
+      <div class="hrow">
+        <span class="txt" title="${esc(h.prompt)}">${esc(h.prompt)}</span>
+        <span class="pill">${esc(h.confidence || "?")}</span>
+        <a href="/api/report/${h.id}" target="_blank">PDF</a>
+      </div>`).join("");
   } catch (e) { console.warn("history load failed", e); }
 }
+loadHistory();
 
-// ---------------- Watchlist (Watchlist page + Dashboard stats) ----------------
+// ---------------- Watchlist panel (login required, strictly per-account) ----------------
 let wlPendingCheckId = null;
+
 async function loadWatchlist() {
-  if (!authToken) { $("wlList").innerHTML = lockedNote("Log in to use your watchlist"); return; }
+  if (!authToken) { $("wlList").innerHTML = lockedNote(); return; }
   try {
     const r = await fetch("/api/watchlist", { headers: authHeaders() });
-    if (r.status === 401) { $("wlList").innerHTML = lockedNote("Session expired -- please log in again"); return; }
+    if (r.status === 401) { $("wlList").innerHTML = lockedNote(); return; }
     const rows = await r.json();
-    if ($("statWatchlist")) $("statWatchlist").textContent = rows.length;
-    if ($("statAlerts")) $("statAlerts").textContent = rows.filter(w => w.last_alert).length;
     if (!rows.length) { $("wlList").innerHTML = "No watchlist areas saved yet."; return; }
     $("wlList").innerHTML = rows.map(w => {
       let alertHtml = "";
@@ -762,9 +542,11 @@ async function loadWatchlist() {
     });
   } catch (e) { console.warn("watchlist load failed", e); }
 }
+loadWatchlist();
+
 $("saveWL").onclick = async () => {
-  if (!authToken) return goPage("login");
-  if (!files.length) { alert("Upload at least one image first (Image 1 will be saved as the baseline)."); goPage("analyze"); return; }
+  if (!authToken) return openAuthModal("login");
+  if (!files.length) return alert("Upload at least one image first (Image 1 will be saved as the baseline).");
   const name = prompt("Name this watchlist area (e.g. 'Nahargarh Forest - North Ridge'):");
   if (!name) return;
   const fd = new FormData(); fd.append("name", name); fd.append("file", files[0]);
@@ -776,6 +558,7 @@ $("saveWL").onclick = async () => {
   } catch (e) { alert("Could not save watchlist: " + e.message); }
   $("saveWL").textContent = "+ Save Image 1 as Watchlist baseline"; $("saveWL").disabled = false;
 };
+
 $("wlCheckFile").onchange = async e => {
   const f = e.target.files[0]; e.target.value = "";
   if (!f || !wlPendingCheckId) return;
@@ -787,21 +570,6 @@ $("wlCheckFile").onchange = async e => {
   } catch (err) { alert("Could not check image: " + err.message); }
   wlPendingCheckId = null;
 };
-
-// ---------------- Dashboard ----------------
-function renderDashboard() {
-  if (!authToken) {
-    $("dashLocked").innerHTML = lockedNote("Log in to see your dashboard");
-    $("dashBody").style.display = "none";
-    return;
-  }
-  $("dashLocked").innerHTML = ""; $("dashBody").style.display = "";
-  loadHistory(); loadWatchlist();
-}
-
-// ---------------- Boot ----------------
-if (PAGES.includes(location.hash.slice(1))) { goPage(location.hash.slice(1)); }
-else if (authToken) { goPage("dashboard"); }
 </script>
 </body>
 </html>
