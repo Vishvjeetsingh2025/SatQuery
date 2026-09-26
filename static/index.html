@@ -4,21 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SatQuery AI</title>
-<script type="module">
-const CDNS = ["https://cdn.jsdelivr.net/npm/@splinetool/viewer/build/spline-viewer.js",
-              "https://unpkg.com/@splinetool/viewer/build/spline-viewer.js",
-              "https://esm.sh/@splinetool/viewer"];
-for (const u of CDNS) { try { await import(u); console.log("Spline viewer loaded from", u); break; } catch (e) { console.warn("Spline CDN failed:", u); } }
-</script>
 <style>
 :root{--bg:#050816;--card:rgba(255,255,255,.06);--line:rgba(255,255,255,.12);--acc:#4da3ff;--acc2:#8a5cff;--tx:#e8ecff;--mut:#8b93b8}
 *{box-sizing:border-box;margin:0}html{scroll-behavior:smooth}
 body{background:var(--bg);color:var(--tx);font-family:Inter,system-ui,sans-serif}
 #hero{position:relative;height:100vh;overflow:hidden;
   background:radial-gradient(circle at 70% 30%,#1b2a6b 0,transparent 45%),radial-gradient(circle at 20% 80%,#3a1b6b 0,transparent 40%),var(--bg)}
-#bg,#bg spline-viewer{position:absolute;inset:0;width:100%;height:100%}
-#sat{position:absolute;right:0;top:0;width:48%;height:100%;mix-blend-mode:screen;pointer-events:none} /* screen = dark scene bg turns see-through, particles show behind satellite; pointer-events:none = mouse reaches the particle scene everywhere (remove that bit to rotate the satellite) */
-#bg iframe,#sat spline-viewer,#sat iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+#bg,#bg canvas{position:absolute;inset:0;width:100%;height:100%}
+#sat{position:absolute;right:0;top:0;width:48%;height:100%;mix-blend-mode:screen;pointer-events:none} /* screen = dark scene bg turns see-through, glow shows through the satellite layer */
+#sat canvas{position:absolute;inset:0;width:100%;height:100%;border:0}
 @media(max-width:900px){#sat{width:100%;opacity:.5}}
 .stars{position:absolute;inset:0;background-image:radial-gradient(3px 3px at 40px 50px,#fff,transparent),radial-gradient(2px 2px at 150px 130px,#cfe2ff,transparent),radial-gradient(4px 4px at 230px 40px,#fff,transparent),radial-gradient(2.5px 2.5px at 90px 210px,#b9a6ff,transparent);background-size:280px 280px;animation:drift 60s linear infinite;opacity:.9}
 @keyframes drift{to{background-position:-400px 400px}}
@@ -192,8 +186,8 @@ form button{position:relative;overflow:hidden}
 </div>
 
 <section id="hero">
-  <div id="bg"><canvas id="stars"></canvas></div>
-  <div id="sat"></div>
+  <div id="bg"><canvas id="stars"></canvas><canvas id="globeCanvas"></canvas></div>
+  <div id="sat"><canvas id="satCanvas"></canvas></div>
   <div class="overlay">
     <p class="tag">SIH26167 · Space Technology</p>
     <h1>SatQuery<span> AI</span></h1>
@@ -266,19 +260,134 @@ form button{position:relative;overflow:hidden}
 
 <script>
 const $ = id => document.getElementById(id);
-const SPLINE_BG_URL  = "https://prod.spline.design/ja7rpTyvpIRNkP55/scene.splinecode"; // scene 1: particle sphere  -> full-screen background
-const SPLINE_SAT_URL = "https://prod.spline.design/JWpzh9ThuZsAjk2i/scene.splinecode"; // scene 2: green satellite    -> right side of hero
-// Accepts a ...scene.splinecode link (Code Export > Viewer) or a public my.spline.design link.
-function mount(id, url) {
-  if (!url) return;
-  let el;
-  if (url.includes(".splinecode")) { el = document.createElement("spline-viewer"); el.setAttribute("url", url); }
-  else { el = document.createElement("iframe"); el.src = url; el.setAttribute("frameborder", "0"); }
-  el.addEventListener("error", e => console.warn("Spline error", url, e)); $(id).append(el);
-}
-mount("bg", SPLINE_BG_URL); mount("sat", SPLINE_SAT_URL);
 
-// Fallback starfield (shown until Spline URLs are set): random twinkling stars, mouse parallax, shooting stars
+// ---------------- Hero centerpiece: rotating wireframe globe + radar sweep + "change detected" blips ----------------
+// Fully custom canvas (no external scene/CDN) so it never fails to load, and it visually echoes what
+// SatQuery actually does: scan imagery, sweep for change, flag it.
+(function () {
+  const c = document.getElementById("globeCanvas"); if (!c) return;
+  const gx = c.getContext("2d"), R = Math.min(window.devicePixelRatio || 1, 2);
+  let W, H;
+  const size = () => { W = c.width = c.offsetWidth * R; H = c.height = c.offsetHeight * R; };
+  size(); addEventListener("resize", size);
+
+  let heroVisible = true;
+  const heroEl = document.getElementById("hero");
+  if (heroEl && "IntersectionObserver" in window) {
+    new IntersectionObserver(es => { heroVisible = es[0].isIntersecting; }, { threshold: 0 }).observe(heroEl);
+  }
+
+  let blips = [];
+  (function spawnBlip() {
+    blips.push({ lat: (Math.random() - .5) * 1.5, lon: Math.random() * 6.283, born: 0 });
+    setTimeout(spawnBlip, 2600 + Math.random() * 2600);
+  })();
+
+  (function draw(ts) {
+    requestAnimationFrame(draw);
+    if (!c.isConnected || !heroVisible) return;
+    ts = ts || 0; const t = ts / 1000;
+    gx.clearRect(0, 0, W, H);
+    const cx = W * .46, cy = H * .5, rad = Math.min(W, H) * .26;
+    const spin = t * .18, sweep = (t * .5) % 6.283;
+
+    gx.save(); gx.translate(cx, cy);
+    // globe outline
+    gx.strokeStyle = "rgba(120,163,255,.4)"; gx.lineWidth = 1.1 * R;
+    gx.beginPath(); gx.arc(0, 0, rad, 0, 6.283); gx.stroke();
+    // longitude meridians (spinning)
+    for (let i = 0; i < 6; i++) {
+      const phi = spin + i * Math.PI / 6;
+      gx.beginPath(); gx.ellipse(0, 0, Math.abs(rad * Math.cos(phi)), rad, 0, 0, 6.283);
+      gx.strokeStyle = `rgba(120,163,255,${.14 + .1 * Math.abs(Math.cos(phi))})`; gx.stroke();
+    }
+    // latitude parallels
+    for (let i = -2; i <= 2; i++) {
+      if (!i) continue;
+      const theta = i * .55, ry = rad * Math.cos(theta);
+      gx.beginPath(); gx.ellipse(0, rad * Math.sin(theta), ry, ry * .28, 0, 0, 6.283);
+      gx.strokeStyle = "rgba(120,163,255,.22)"; gx.stroke();
+    }
+    // radar sweep wedge
+    const steps = 30, span = .95;
+    for (let i = 0; i < steps; i++) {
+      const a = sweep - (i / steps) * span;
+      gx.beginPath(); gx.moveTo(0, 0); gx.arc(0, 0, rad, a, a - span / steps); gx.closePath();
+      gx.fillStyle = `rgba(138,92,255,${(1 - i / steps) * .16})`; gx.fill();
+    }
+    gx.strokeStyle = "rgba(180,150,255,.55)"; gx.lineWidth = 1.4 * R;
+    gx.beginPath(); gx.moveTo(0, 0); gx.lineTo(Math.cos(sweep) * rad, Math.sin(sweep) * rad); gx.stroke();
+    // "change detected" blips on the near side of the globe
+    blips.forEach(b => { if (!b.born) b.born = t; });
+    blips = blips.filter(b => t - b.born < 2.4);
+    blips.forEach(b => {
+      const lon = b.lon + spin, z = Math.cos(b.lat) * Math.cos(lon);
+      if (z < .1) return;
+      const bx = rad * Math.cos(b.lat) * Math.sin(lon), by = rad * Math.sin(b.lat);
+      const age = (t - b.born) / 2.4, ring = age * 14 * R;
+      gx.beginPath(); gx.arc(bx, by, 2.4 * R + ring, 0, 6.283);
+      gx.strokeStyle = `rgba(255,110,90,${(1 - age) * .8})`; gx.lineWidth = 1.6 * R; gx.stroke();
+      gx.beginPath(); gx.arc(bx, by, 2.2 * R, 0, 6.283);
+      gx.fillStyle = `rgba(255,160,90,${1 - age})`; gx.fill();
+    });
+    gx.restore();
+  })();
+})();
+
+// ---------------- Orbiting satellite scanning over the hero's right side ----------------
+(function () {
+  const c = document.getElementById("satCanvas"); if (!c) return;
+  const sx = c.getContext("2d"), R = Math.min(window.devicePixelRatio || 1, 2);
+  let W, H;
+  const size = () => { W = c.width = c.offsetWidth * R; H = c.height = c.offsetHeight * R; };
+  size(); addEventListener("resize", size);
+
+  let heroVisible = true;
+  const heroEl = document.getElementById("hero");
+  if (heroEl && "IntersectionObserver" in window) {
+    new IntersectionObserver(es => { heroVisible = es[0].isIntersecting; }, { threshold: 0 }).observe(heroEl);
+  }
+
+  (function draw(ts) {
+    requestAnimationFrame(draw);
+    if (!c.isConnected || !heroVisible) return;
+    ts = ts || 0; const t = ts / 1000;
+    sx.clearRect(0, 0, W, H);
+    const cx = W * .55, cy = H * .42, rx = Math.min(W, H) * .34, ry = Math.min(W, H) * .2;
+    const a = t * .35;
+    const sxp = cx + Math.cos(a) * rx, syp = cy + Math.sin(a) * ry * .6;
+
+    // faint orbit path
+    sx.beginPath(); sx.ellipse(cx, cy, rx, ry * .6, 0, 0, 6.283);
+    sx.strokeStyle = "rgba(120,255,190,.18)"; sx.lineWidth = 1 * R; sx.setLineDash([2 * R, 6 * R]); sx.stroke(); sx.setLineDash([]);
+
+    // fading trail behind the satellite
+    for (let i = 1; i <= 18; i++) {
+      const ta = a - i * .045;
+      const tx = cx + Math.cos(ta) * rx, ty = cy + Math.sin(ta) * ry * .6;
+      sx.beginPath(); sx.arc(tx, ty, (2.2 - i * .08) * R, 0, 6.283);
+      sx.fillStyle = `rgba(120,255,190,${(1 - i / 18) * .35})`; sx.fill();
+    }
+
+    // downlink scan-beam pulsing toward the ground
+    const pulse = .35 + .3 * Math.abs(Math.sin(t * 1.6));
+    sx.beginPath(); sx.moveTo(sxp - 5 * R, syp); sx.lineTo(sxp + 5 * R, syp);
+    sx.lineTo(sxp + 46 * R, H); sx.lineTo(sxp - 46 * R, H); sx.closePath();
+    sx.fillStyle = `rgba(120,255,190,${pulse * .12})`; sx.fill();
+
+    // satellite body (rotated to face its direction of travel)
+    sx.save(); sx.translate(sxp, syp); sx.rotate(a + Math.PI / 2);
+    sx.fillStyle = "#dfffee"; sx.shadowColor = "#7affbe"; sx.shadowBlur = 10 * R;
+    sx.fillRect(-4 * R, -7 * R, 8 * R, 14 * R);
+    sx.fillStyle = "rgba(120,200,255,.85)";
+    sx.fillRect(-16 * R, -3 * R, 10 * R, 6 * R);
+    sx.fillRect(6 * R, -3 * R, 10 * R, 6 * R);
+    sx.shadowBlur = 0;
+    sx.restore();
+  })();
+})();
+
+// Twinkling starfield behind the globe: random stars, mouse parallax, shooting stars
 (function () {
   const c = document.getElementById("stars"); if (!c) return;
   const x = c.getContext("2d"), R = window.devicePixelRatio || 1; let W, H, mx = 0, my = 0, shots = [];
@@ -297,7 +406,7 @@ mount("bg", SPLINE_BG_URL); mount("sat", SPLINE_SAT_URL);
   }
 
   (function draw() {
-    if (!c.isConnected) return;            // stops automatically once a Spline scene replaces it
+    if (!c.isConnected) return;
     if (!heroVisible) { requestAnimationFrame(draw); return; }   // skip drawing (and the costly shadowBlur) while off-screen
     x.clearRect(0, 0, W, H);
     x.shadowColor = "#9ec5ff"; x.shadowBlur = 3;   // fixed, small blur once per frame instead of per-star (was the main jank source)
