@@ -30,7 +30,8 @@ h1 span{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-backgro
 .btn{pointer-events:auto;align-self:flex-start;padding:.9rem 2rem;border-radius:99px;color:#fff;text-decoration:none;font-weight:600;background:linear-gradient(90deg,var(--acc),var(--acc2));box-shadow:0 0 30px #4da3ff66;transition:.2s}
 .btn:hover{transform:translateY(-2px);box-shadow:0 0 45px #8a5cffaa}
 #app{min-height:100vh;padding:5rem 5vw;display:grid;grid-template-columns:1fr 1.2fr;gap:1.5rem;max-width:1400px;margin:auto}
-.panel{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:1.4rem;backdrop-filter:blur(16px)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:1.4rem;backdrop-filter:blur(8px);contain:layout paint style}
+#hero{content-visibility:auto;contain-intrinsic-size:100vh}
 h2{font-size:1.1rem;margin-bottom:1rem}
 #drop{border:2px dashed var(--line);border-radius:14px;padding:2rem;text-align:center;color:var(--mut);cursor:pointer;transition:.2s}
 #drop.over,#drop:hover{border-color:var(--acc);color:var(--tx);background:#4da3ff14}
@@ -75,9 +76,114 @@ form button{border:0;border-radius:12px;padding:0 1.4rem;color:#fff;font-weight:
 .smallbtn{font-size:.72rem;padding:.3rem .7rem;border-radius:8px;border:1px solid var(--line);background:#ffffff0d;color:var(--tx);cursor:pointer}
 .smallbtn:hover{border-color:var(--acc)}
 .rpt-link{font-size:.72rem;color:var(--acc);text-decoration:none;margin-left:.6rem}
+
+/* ---------- Auth widget + modal ---------- */
+#authPill{position:fixed;top:1.2rem;right:1.4rem;z-index:50;display:flex;align-items:center;gap:.6rem;
+  background:rgba(10,14,32,.55);border:1px solid var(--line);backdrop-filter:blur(14px);border-radius:99px;
+  padding:.45rem .6rem .45rem 1rem;font-size:.82rem;box-shadow:0 4px 24px #0006;animation:fadeDown .6s ease both}
+@keyframes fadeDown{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:translateY(0)}}
+#authPill button{border:0;border-radius:99px;padding:.4rem 1.1rem;font-weight:600;font-size:.8rem;cursor:pointer;
+  background:linear-gradient(90deg,var(--acc),var(--acc2));color:#fff;transition:.2s}
+#authPill button:hover{filter:brightness(1.15);transform:translateY(-1px)}
+#authPill .who{color:var(--tx)}#authPill .who b{color:var(--acc)}
+#authPill .logout{background:none;border:1px solid var(--line);color:var(--mut)}
+#authPill .logout:hover{color:#ff8080;border-color:#ff8080}
+#authModal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;
+  background:#02040ecc;backdrop-filter:blur(6px)}
+#authModal.show{display:flex;animation:fadeDown .25s ease both}
+.authCard{width:min(360px,90vw);background:linear-gradient(180deg,#131a36,#0a0e20);border:1px solid var(--line);
+  border-radius:18px;padding:1.6rem;box-shadow:0 20px 60px #000a,0 0 0 1px #ffffff08 inset}
+.authTabs{display:flex;gap:.4rem;margin-bottom:1.1rem;background:#ffffff0a;border-radius:99px;padding:.25rem}
+.authTabs button{flex:1;border:0;background:none;color:var(--mut);padding:.5rem;border-radius:99px;cursor:pointer;font-size:.85rem;font-weight:600;transition:.2s}
+.authTabs button.on{background:linear-gradient(90deg,var(--acc),var(--acc2));color:#fff}
+.authCard input{width:100%;background:#ffffff0d;border:1px solid var(--line);border-radius:10px;padding:.75rem .9rem;
+  color:var(--tx);outline:none;margin-bottom:.7rem;font-size:.9rem}
+.authCard input:focus{border-color:var(--acc)}
+.authCard .go{width:100%;border:0;border-radius:10px;padding:.8rem;font-weight:700;color:#fff;cursor:pointer;
+  background:linear-gradient(90deg,var(--acc),var(--acc2));box-shadow:0 0 24px #4da3ff55;transition:.2s}
+.authCard .go:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.authCard .go:disabled{opacity:.6;cursor:default;transform:none}
+.authErr{color:#ff8686;font-size:.8rem;margin:-.3rem 0 .7rem;min-height:1em}
+.authClose{float:right;background:none;border:0;color:var(--mut);font-size:1.1rem;cursor:pointer;line-height:1}
+.authClose:hover{color:var(--tx)}
+.lockNote{color:var(--mut);font-size:.8rem;display:flex;align-items:center;gap:.5rem}
+.lockNote button{margin-left:auto;flex-shrink:0}
+
+/* ---------- Wow-factor motion ---------- */
+.panel{animation:riseIn .55s cubic-bezier(.2,.8,.2,1) both}
+.side .panel:nth-child(2){animation-delay:.08s}.side .panel:nth-child(3){animation-delay:.16s}
+#chat{animation-delay:.1s}
+@keyframes riseIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.scan-wrap{display:flex;flex-direction:column;gap:.5rem}
+.scan-bar{position:relative;height:3px;border-radius:2px;background:#ffffff14;overflow:hidden}
+.scan-bar i{position:absolute;top:0;left:-30%;width:30%;height:100%;border-radius:2px;
+  background:linear-gradient(90deg,transparent,var(--acc),var(--acc2),transparent);animation:scan 1.1s ease-in-out infinite}
+@keyframes scan{0%{left:-30%}100%{left:100%}}
+.scan-label{font-size:.85rem;color:var(--mut)}
+.cu{font-weight:800}
+.alertbox.on.pulseIn{animation:alertPulse .9s ease}
+@keyframes alertPulse{0%{transform:scale(.96);box-shadow:0 0 0 0 #ff505066}55%{transform:scale(1.015)}100%{transform:scale(1);box-shadow:0 0 0 14px #ff505000}}
+.th{animation:riseIn .35s ease both}
+.rel div img{transition:.25s}.rel div:hover img{transform:scale(1.06);box-shadow:0 0 16px var(--acc)}
+form button{position:relative;overflow:hidden}
+
+/* ---------- Scroll-reveal landing sections ---------- */
+.reveal{opacity:0;transform:translateY(36px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1)}
+.reveal.in{opacity:1;transform:translateY(0)}
+.reveal.d1{transition-delay:.08s}.reveal.d2{transition-delay:.16s}.reveal.d3{transition-delay:.24s}.reveal.d4{transition-delay:.32s}
+
+.lp{max-width:1200px;margin:0 auto;padding:7rem 5vw;position:relative}
+.lp-head{text-align:center;margin-bottom:3.2rem}
+.lp-head .tag{color:var(--acc);letter-spacing:.2em;font-size:.78rem;text-transform:uppercase;margin-bottom:.7rem}
+.lp-head h2{font-size:clamp(1.8rem,4vw,2.6rem);font-weight:800;margin:0}
+.lp-head p{color:var(--mut);max-width:560px;margin:.8rem auto 0;font-size:1.02rem}
+
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.4rem}
+.feat{background:linear-gradient(180deg,#ffffff0d,#ffffff03);border:1px solid var(--line);border-radius:20px;
+  padding:1.8rem;transition:.35s;position:relative;overflow:hidden}
+.feat::before{content:"";position:absolute;inset:0;background:radial-gradient(160px 160px at 20% 0%,#4da3ff22,transparent);opacity:0;transition:.35s}
+.feat:hover{transform:translateY(-6px);border-color:#4da3ff55;box-shadow:0 20px 50px #0006}
+.feat:hover::before{opacity:1}
+.feat .ic{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;
+  background:linear-gradient(135deg,var(--acc),var(--acc2));margin-bottom:1.1rem;box-shadow:0 8px 24px #4da3ff44}
+.feat h3{font-size:1.08rem;margin-bottom:.5rem}
+.feat p{color:var(--mut);font-size:.9rem;line-height:1.55}
+
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:0;position:relative;counter-reset:stepnum}
+.steps::before{content:"";position:absolute;top:26px;left:12%;right:12%;height:2px;
+  background:linear-gradient(90deg,var(--acc),var(--acc2));opacity:.35;z-index:0}
+.step{position:relative;z-index:1;text-align:center;padding:0 .8rem}
+.step .n{counter-increment:stepnum;width:52px;height:52px;margin:0 auto 1rem;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:1.15rem;background:var(--bg);border:2px solid var(--acc);color:var(--acc);box-shadow:0 0 24px #4da3ff44}
+.step h4{font-size:.98rem;margin-bottom:.4rem}
+.step p{color:var(--mut);font-size:.84rem;line-height:1.5}
+
+.stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;text-align:center;
+  background:linear-gradient(90deg,#4da3ff14,#8a5cff14);border:1px solid var(--line);border-radius:20px;padding:2.2rem 1rem}
+.stat b{display:block;font-size:clamp(1.6rem,3vw,2.3rem);font-weight:800;
+  background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;color:transparent}
+.stat span{color:var(--mut);font-size:.8rem}
+
+@media(max-width:900px){.feat-grid{grid-template-columns:1fr}.steps{grid-template-columns:1fr 1fr;row-gap:2rem}.steps::before{display:none}.stats-bar{grid-template-columns:1fr 1fr;gap:1.6rem}}
 </style>
 </head>
 <body>
+<div id="authPill"></div>
+
+<div id="authModal">
+  <div class="authCard">
+    <button class="authClose" type="button" id="authClose">✕</button>
+    <div class="authTabs">
+      <button type="button" id="tabLogin" class="on">Log In</button>
+      <button type="button" id="tabSignup">Sign Up</button>
+    </div>
+    <div class="authErr" id="authErr"></div>
+    <input id="authEmail" type="email" placeholder="you@example.com" autocomplete="username">
+    <input id="authPass" type="password" placeholder="Password" autocomplete="current-password">
+    <button class="go" id="authGo" type="button">Log In</button>
+  </div>
+</div>
+
 <section id="hero">
   <div id="bg"><canvas id="stars"></canvas></div>
   <div id="sat"></div>
@@ -86,6 +192,41 @@ form button{border:0;border-radius:12px;padding:0 1.4rem;color:#fff;font-weight:
     <h1>SatQuery<span> AI</span></h1>
     <p class="sub">Upload satellite imagery. Ask in plain language. Get answers grounded in what the images actually show.</p>
     <a class="btn" href="#app">Launch Analyst →</a>
+  </div>
+</section>
+
+<section class="lp">
+  <div class="lp-head reveal">
+    <p class="tag">Why SatQuery AI</p>
+    <h2>One assistant. Every satellite question.</h2>
+    <p>A hybrid Vision-Language + classical CV engine that answers in plain language — and never guesses beyond the evidence.</p>
+  </div>
+  <div class="feat-grid">
+    <div class="feat reveal d1"><div class="ic">🛰️</div><h3>Grounded Answers</h3><p>Every response is backed by real pixel-level measurements, not just a VLM's visual impression — with a confidence score attached.</p></div>
+    <div class="feat reveal d2"><div class="ic">🔀</div><h3>Automatic Change Detection</h3><p>ECC alignment, Lab-space diffing and Otsu thresholding compare any two dates and isolate genuine land-cover change.</p></div>
+    <div class="feat reveal d3"><div class="ic">🚨</div><h3>Watchlist Alerts</h3><p>Save an area as a baseline once. Every future check is compared automatically — with an instant alert if something changed.</p></div>
+  </div>
+</section>
+
+<section class="lp">
+  <div class="lp-head reveal">
+    <p class="tag">How it works</p>
+    <h2>From imagery to insight in four steps</h2>
+  </div>
+  <div class="steps">
+    <div class="step reveal d1"><div class="n">1</div><h4>Upload Imagery</h4><p>Up to 16 satellite images — a single scene, or oldest → newest for change tracking.</p></div>
+    <div class="step reveal d2"><div class="n">2</div><h4>Ask in Plain Language</h4><p>Hindi or English — describe, compare, measure, locate, or count.</p></div>
+    <div class="step reveal d3"><div class="n">3</div><h4>Router + CV + VLM Reason Together</h4><p>Intent detection, land-cover analytics and Gemini reasoning combine on the evidence.</p></div>
+    <div class="step reveal d4"><div class="n">4</div><h4>Grounded Answer + Alerts</h4><p>Get a confidence-scored answer, a downloadable report, and ongoing watchlist monitoring.</p></div>
+  </div>
+</section>
+
+<section class="lp" style="padding-top:0">
+  <div class="stats-bar reveal">
+    <div class="stat"><b class="cu" data-target="16" data-suffix="">0</b><span>Images per analysis</span></div>
+    <div class="stat"><b class="cu" data-target="8" data-suffix="">0</b><span>Query intents understood</span></div>
+    <div class="stat"><b class="cu" data-target="100" data-suffix="%">0</b><span>Evidence-grounded answers</span></div>
+    <div class="stat"><b class="cu" data-target="24" data-suffix="">0</b><span>Continuous monitoring</span></div>
   </div>
 </section>
 
@@ -138,15 +279,25 @@ mount("bg", SPLINE_BG_URL); mount("sat", SPLINE_SAT_URL);
   size(); addEventListener("resize", size);
   const S = Array.from({ length: 260 }, () => ({ x: Math.random(), y: Math.random(), r: Math.random() ** 3 * 2.6 + .6,
     d: Math.random() * .8 + .2, p: Math.random() * 6.28, t: Math.random() * .02 + .005 }));
-  addEventListener("mousemove", e => { mx = e.clientX / innerWidth - .5; my = e.clientY / innerHeight - .5; });
+  addEventListener("mousemove", e => { mx = e.clientX / innerWidth - .5; my = e.clientY / innerHeight - .5; }, { passive: true });
+
+  // Perf fix: only animate while the hero section is actually visible (stops the draw loop
+  // entirely once the user scrolls past it, instead of burning CPU/GPU in the background forever).
+  let heroVisible = true;
+  const heroEl = document.getElementById("hero");
+  if (heroEl && "IntersectionObserver" in window) {
+    new IntersectionObserver(es => { heroVisible = es[0].isIntersecting; }, { threshold: 0 }).observe(heroEl);
+  }
+
   (function draw() {
     if (!c.isConnected) return;            // stops automatically once a Spline scene replaces it
+    if (!heroVisible) { requestAnimationFrame(draw); return; }   // skip drawing (and the costly shadowBlur) while off-screen
     x.clearRect(0, 0, W, H);
+    x.shadowColor = "#9ec5ff"; x.shadowBlur = 3;   // fixed, small blur once per frame instead of per-star (was the main jank source)
     S.forEach(s => {
       s.p += s.t;
       const px = (s.x * W - mx * s.d * 40 * R + W) % W, py = (s.y * H - my * s.d * 40 * R + H) % H;
       x.globalAlpha = .55 + .45 * Math.sin(s.p); x.fillStyle = s.r > 2 ? "#cfe2ff" : "#fff";
-      x.shadowColor = "#9ec5ff"; x.shadowBlur = s.r * 4;
       x.beginPath(); x.arc(px, py, s.r * R, 0, 6.283); x.fill();
     });
     x.shadowBlur = 0;
@@ -164,6 +315,115 @@ mount("bg", SPLINE_BG_URL); mount("sat", SPLINE_SAT_URL);
 let files = [], history = [];
 const esc = s => s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 const fmt = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\n/g, "<br>");
+
+// ==================== Auth ====================
+let authToken = localStorage.getItem("sq_token") || null;
+let authEmail = localStorage.getItem("sq_email") || null;
+let authMode = "login";
+const authHeaders = () => authToken ? { "Authorization": "Bearer " + authToken } : {};
+
+function renderAuthPill() {
+  $("authPill").innerHTML = authToken
+    ? `<span class="who">👤 <b>${esc(authEmail)}</b></span><button type="button" class="logout" id="logoutBtn">Log Out</button>`
+    : `<button type="button" id="openAuth">Log In / Sign Up</button>`;
+  if (authToken) $("logoutBtn").onclick = doLogout;
+  else $("openAuth").onclick = () => openAuthModal("login");
+}
+function openAuthModal(mode) {
+  authMode = mode; $("authErr").textContent = "";
+  $("tabLogin").classList.toggle("on", mode === "login");
+  $("tabSignup").classList.toggle("on", mode === "signup");
+  $("authGo").textContent = mode === "login" ? "Log In" : "Create Account";
+  $("authModal").classList.add("show");
+  $("authEmail").focus();
+}
+$("tabLogin").onclick = () => openAuthModal("login");
+$("tabSignup").onclick = () => openAuthModal("signup");
+$("authClose").onclick = () => $("authModal").classList.remove("show");
+$("authModal").onclick = e => { if (e.target.id === "authModal") $("authModal").classList.remove("show"); };
+[$("authEmail"), $("authPass")].forEach(inp => inp.onkeydown = e => { if (e.key === "Enter") $("authGo").click(); });
+
+$("authGo").onclick = async () => {
+  const email = $("authEmail").value.trim(), password = $("authPass").value;
+  if (!email || !password) { $("authErr").textContent = "Please fill in both fields."; return; }
+  $("authGo").disabled = true; $("authGo").textContent = "Please wait…";
+  const fd = new FormData(); fd.append("email", email); fd.append("password", password);
+  try {
+    const r = await fetch(`/api/auth/${authMode === "login" ? "login" : "signup"}`, { method: "POST", body: fd });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || "Something went wrong");
+    authToken = d.token; authEmail = d.email;
+    localStorage.setItem("sq_token", authToken); localStorage.setItem("sq_email", authEmail);
+    $("authModal").classList.remove("show"); $("authEmail").value = ""; $("authPass").value = "";
+    renderAuthPill(); loadHistory(); loadWatchlist();
+  } catch (e) { $("authErr").textContent = e.message; }
+  $("authGo").disabled = false; $("authGo").textContent = authMode === "login" ? "Log In" : "Create Account";
+};
+
+async function doLogout() {
+  try { await fetch("/api/auth/logout", { method: "POST", headers: authHeaders() }); } catch (e) {}
+  authToken = null; authEmail = null;
+  localStorage.removeItem("sq_token"); localStorage.removeItem("sq_email");
+  renderAuthPill();
+  $("histList").innerHTML = "No past analyses yet — ask something!";
+  $("wlList").innerHTML = lockedNote();
+}
+function lockedNote() {
+  return `<div class="lockNote">🔒 Log in to use this <button type="button" class="smallbtn" onclick="openAuthModal('login')">Log In</button></div>`;
+}
+renderAuthPill();
+
+// ==================== Wow-factor helpers ====================
+function typeText(el, text, onDone, targetFrames = 110, speed = 14) {
+  el.style.whiteSpace = "pre-wrap"; el.textContent = "";
+  const step = Math.max(1, Math.ceil(text.length / targetFrames)); let i = 0;
+  (function tick() {
+    i += step; el.textContent = text.slice(0, i);
+    if (i < text.length) setTimeout(tick, speed); else { el.textContent = text; onDone && onDone(); }
+  })();
+}
+function animateCount(el, target, decimals = 1, duration = 900, suffix = "%") {
+  const start = performance.now();
+  function step(now) {
+    const t = Math.min(1, (now - start) / duration), eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = (target * eased).toFixed(decimals) + suffix;
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// ---------------- Scroll-reveal for landing sections ----------------
+if ("IntersectionObserver" in window) {
+  const revealObs = new IntersectionObserver(entries => {
+    entries.forEach(en => {
+      if (!en.isIntersecting) return;
+      en.target.classList.add("in");
+      en.target.querySelectorAll(".cu[data-target]").forEach(el => {
+        animateCount(el, parseFloat(el.dataset.target), 0, 1200, el.dataset.suffix ?? "");
+      });
+      revealObs.unobserve(en.target);
+    });
+  }, { threshold: .15, rootMargin: "0px 0px -40px 0px" });
+  document.querySelectorAll(".reveal").forEach(el => revealObs.observe(el));
+} else {
+  document.querySelectorAll(".reveal").forEach(el => el.classList.add("in")); // no-JS/old-browser fallback
+}
+
+// ---------------- Subtle scroll parallax on the 3D object ----------------
+addEventListener("scroll", () => {
+  const y = Math.min(scrollY, innerHeight);
+  const satEl = $("sat");
+  if (satEl) satEl.style.transform = `translateY(${y * 0.18}px) scale(${1 + y * .00025})`;
+}, { passive: true });
+function scanLoader() {
+  const phrases = ["Reading pixels…", "Running CV analytics…", "Aligning imagery…", "Consulting the AI model…", "Grounding the answer in evidence…"];
+  let idx = 0;
+  const wrap = document.createElement("div"); wrap.className = "scan-wrap";
+  wrap.innerHTML = `<div class="scan-label">${phrases[0]}</div><div class="scan-bar"><i></i></div>`;
+  const label = wrap.querySelector(".scan-label");
+  const timer = setInterval(() => { idx = (idx + 1) % phrases.length; label.textContent = phrases[idx]; }, 1100);
+  return { el: wrap, stop: () => clearInterval(timer) };
+}
 
 ["Which images contain water bodies?","Compare vegetation vs urban area","Any roads, buildings or airports?","Rank images by greenness"]
   .forEach(t => { const b = document.createElement("button"); b.type="button"; b.textContent=t; b.onclick=()=>{$("q").value=t;$("f").requestSubmit()}; $("chips").append(b); });
@@ -199,34 +459,48 @@ $("f").onsubmit = async e => {
   if (!files.length) return bubble("a", "Please upload at least one image first.");
   $("q").value = "";
   bubble("u", esc(q));
-  const wait = bubble("a", '<span class="dot">Analysing imagery…</span>');
+  const wait = bubble("a", "");
+  const loader = scanLoader(); wait.appendChild(loader.el);
   const fd = new FormData();
   fd.append("prompt", q); fd.append("history", JSON.stringify(history));
   files.forEach(f => fd.append("files", f));
   try {
-    const r = await fetch("/api/query", { method: "POST", body: fd });
+    const r = await fetch("/api/query", { method: "POST", body: fd, headers: authHeaders() });
     const d = await r.json();
+    loader.stop();
     if (d.error) throw new Error(d.error);
     const rel = (d.relevant_images || []).filter(i => Number.isInteger(i) && i >= 1 && i <= files.length);
     const seg = m => m ? `<div class="sb" title="green=vegetation, blue=water, grey=built/bare, tan=other"><span style="width:${m.vegetation}%;background:#3fbf5f"></span><span style="width:${m.water}%;background:#3d8bff"></span><span style="width:${m.built_or_bare}%;background:#9aa0b5"></span><span style="width:${m.other}%;background:#c9a26a"></span></div>` : "";
-    let h = fmt(d.answer || "");
-    (d.changes || []).forEach(c => { h += `<div class="chg"><img src="data:image/jpeg;base64,${c.overlay}"><div><b style="color:var(--tx)">Image ${c.pair[0]} → ${c.pair[1]}</b><br>Changed area: <b style="color:#ff7070">${c.changed_pct}%</b><br>${Object.entries(c.transitions).map(([k, v]) => `${k.replace(/_/g, " ")}: +${v.gain_pct}% / −${v.loss_pct}%`).join("<br>")}</div></div>`; });
-    h += `<br><span class="chip">Confidence: ${esc(d.confidence || "?")}</span>`;
-    if (d.history_id) h += `<a class="rpt-link" href="/api/report/${d.history_id}" target="_blank">📥 Download PDF report</a>`;
-    if ((d.observations || []).length) h += `<ul class="ev">${d.observations.map(o => `<li>${esc(o)}</li>`).join("")}</ul>`;
-    if (rel.length) h += `<div class="rel">${rel.map(i => `<div><img src="${URL.createObjectURL(files[i-1])}">${seg((d.measurements||[])[i-1])}Image ${i}</div>`).join("")}</div>`;
-    wait.innerHTML = h;
-    document.querySelectorAll(".th").forEach((el, i) => el.classList.toggle("hit", rel.includes(i + 1)));
+    let rest = "";
+    (d.changes || []).forEach(c => { rest += `<div class="chg"><img src="data:image/jpeg;base64,${c.overlay}"><div><b style="color:var(--tx)">Image ${c.pair[0]} → ${c.pair[1]}</b><br>Changed area: <b class="cu" style="color:#ff7070" data-target="${c.changed_pct}">0.0%</b><br>${Object.entries(c.transitions).map(([k, v]) => `${k.replace(/_/g, " ")}: +${v.gain_pct}% / −${v.loss_pct}%`).join("<br>")}</div></div>`; });
+    rest += `<br><span class="chip">Confidence: ${esc(d.confidence || "?")}</span>`;
+    if (d.history_id) rest += `<a class="rpt-link" href="/api/report/${d.history_id}" target="_blank">📥 Download PDF report</a>`;
+    if ((d.observations || []).length) rest += `<ul class="ev">${d.observations.map(o => `<li>${esc(o)}</li>`).join("")}</ul>`;
+    if (rel.length) rest += `<div class="rel">${rel.map(i => `<div><img src="${URL.createObjectURL(files[i-1])}">${seg((d.measurements||[])[i-1])}Image ${i}</div>`).join("")}</div>`;
+
+    wait.innerHTML = "";
+    const typeTarget = document.createElement("div"); wait.appendChild(typeTarget);
+    const restArea = document.createElement("div"); wait.appendChild(restArea);
+    typeText(typeTarget, d.answer || "", () => {
+      typeTarget.innerHTML = fmt(d.answer || "");
+      restArea.innerHTML = rest;
+      restArea.querySelectorAll(".cu[data-target]").forEach(el => animateCount(el, parseFloat(el.dataset.target)));
+      document.querySelectorAll(".th").forEach((el, i) => el.classList.toggle("hit", rel.includes(i + 1)));
+      $("msgs").scrollTop = 1e9;
+    });
     history.push({ role: "user", text: q }, { role: "assistant", text: d.answer || "" });
     loadHistory();
-  } catch (err) { wait.textContent = "Error: " + err.message; }
+  } catch (err) { loader.stop(); wait.textContent = "Error: " + err.message; }
   $("msgs").scrollTop = 1e9;
 };
 
-// ---------------- History panel ----------------
+// ---------------- History panel (login required) ----------------
 async function loadHistory() {
+  if (!authToken) { $("histList").innerHTML = lockedNote(); return; }
   try {
-    const r = await fetch("/api/history"); const rows = await r.json();
+    const r = await fetch("/api/history", { headers: authHeaders() });
+    if (r.status === 401) { $("histList").innerHTML = lockedNote(); return; }
+    const rows = await r.json();
     if (!rows.length) { $("histList").innerHTML = "No past analyses yet — ask something!"; return; }
     $("histList").innerHTML = rows.map(h => `
       <div class="hrow">
@@ -238,19 +512,22 @@ async function loadHistory() {
 }
 loadHistory();
 
-// ---------------- Watchlist panel ----------------
+// ---------------- Watchlist panel (login required, strictly per-account) ----------------
 let wlPendingCheckId = null;
 
 async function loadWatchlist() {
+  if (!authToken) { $("wlList").innerHTML = lockedNote(); return; }
   try {
-    const r = await fetch("/api/watchlist"); const rows = await r.json();
+    const r = await fetch("/api/watchlist", { headers: authHeaders() });
+    if (r.status === 401) { $("wlList").innerHTML = lockedNote(); return; }
+    const rows = await r.json();
     if (!rows.length) { $("wlList").innerHTML = "No watchlist areas saved yet."; return; }
     $("wlList").innerHTML = rows.map(w => {
       let alertHtml = "";
       if (w.last_check_ts) {
         const pct = (w.last_changed_pct ?? 0).toFixed(1);
         alertHtml = w.last_alert
-          ? `<div class="alertbox on">⚠️ Alert: ${pct}% change detected since baseline!</div>`
+          ? `<div class="alertbox on pulseIn">⚠️ Alert: ${pct}% change detected since baseline!</div>`
           : `<div class="alertbox off">✅ No major change (${pct}%) — within normal range.</div>`;
       }
       return `<div class="wl-item">
@@ -268,14 +545,15 @@ async function loadWatchlist() {
 loadWatchlist();
 
 $("saveWL").onclick = async () => {
+  if (!authToken) return openAuthModal("login");
   if (!files.length) return alert("Upload at least one image first (Image 1 will be saved as the baseline).");
   const name = prompt("Name this watchlist area (e.g. 'Nahargarh Forest - North Ridge'):");
   if (!name) return;
   const fd = new FormData(); fd.append("name", name); fd.append("file", files[0]);
   $("saveWL").textContent = "Saving…"; $("saveWL").disabled = true;
   try {
-    const r = await fetch("/api/watchlist/save", { method: "POST", body: fd });
-    if (!r.ok) throw new Error("save failed");
+    const r = await fetch("/api/watchlist/save", { method: "POST", body: fd, headers: authHeaders() });
+    if (!r.ok) throw new Error((await r.json()).error || "save failed");
     await loadWatchlist();
   } catch (e) { alert("Could not save watchlist: " + e.message); }
   $("saveWL").textContent = "+ Save Image 1 as Watchlist baseline"; $("saveWL").disabled = false;
@@ -286,8 +564,8 @@ $("wlCheckFile").onchange = async e => {
   if (!f || !wlPendingCheckId) return;
   const fd = new FormData(); fd.append("file", f);
   try {
-    const r = await fetch(`/api/watchlist/${wlPendingCheckId}/check`, { method: "POST", body: fd });
-    if (!r.ok) throw new Error("check failed");
+    const r = await fetch(`/api/watchlist/${wlPendingCheckId}/check`, { method: "POST", body: fd, headers: authHeaders() });
+    if (!r.ok) throw new Error((await r.json()).error || "check failed");
     await loadWatchlist();
   } catch (err) { alert("Could not check image: " + err.message); }
   wlPendingCheckId = null;
