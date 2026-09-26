@@ -52,6 +52,11 @@ h2{font-size:1.1rem;margin-bottom:1rem}
 .chg{display:flex;gap:.8rem;margin-top:.8rem;font-size:.82rem;color:var(--mut);align-items:center}.chg img{width:150px;border-radius:8px;border:1px solid #ff5050}
 .sb{display:flex;height:6px;border-radius:3px;overflow:hidden;margin:3px 0}.sb span{display:block}
 #stars{position:absolute;inset:0;width:100%;height:100%}
+
+/* ---------- Ambient page-wide dot-grid glow (mouse-reactive, sits behind everything) ---------- */
+#ambientDots{position:fixed;inset:0;z-index:-2;pointer-events:none;
+  background-image:radial-gradient(rgba(140,170,255,.16) 1px,transparent 1.6px);background-size:28px 28px}
+#ambientGlow{position:fixed;inset:0;z-index:-1;pointer-events:none;width:100vw;height:100vh}
 .dot{animation:p 1s infinite}@keyframes p{50%{opacity:.3}}
 #chips{display:flex;gap:.5rem;flex-wrap:wrap;margin:.8rem 0}
 #chips button{background:none;border:1px solid var(--line);color:var(--mut);border-radius:99px;padding:.35rem .9rem;font-size:.8rem;cursor:pointer}
@@ -168,6 +173,8 @@ form button{position:relative;overflow:hidden}
 </style>
 </head>
 <body>
+<div id="ambientDots"></div>
+<canvas id="ambientGlow"></canvas>
 <div id="authPill"></div>
 
 <div id="authModal">
@@ -311,6 +318,74 @@ mount("bg", SPLINE_BG_URL); mount("sat", SPLINE_SAT_URL);
   })();
 })();
 
+
+// ---------------- Ambient background: reactive dot-grid glow + drifting space-dust (whole page, all sections) ----------------
+(function () {
+  const c = document.getElementById("ambientGlow"); if (!c) return;
+  const ctx = c.getContext("2d");
+  const R = Math.min(window.devicePixelRatio || 1, 2);
+  const GAP = 28; // keep in sync with #ambientDots background-size
+  let W, H;
+  function resize() { W = c.width = innerWidth * R; H = c.height = innerHeight * R; c.style.width = innerWidth + "px"; c.style.height = innerHeight + "px"; }
+  resize(); addEventListener("resize", resize);
+
+  // mouse trail: recent cursor positions fade out over ~1.4s, lighting nearby grid dots as they go
+  let trail = [], mx = -9999, my = -9999;
+  addEventListener("mousemove", e => { mx = e.clientX; my = e.clientY; }, { passive: true });
+  addEventListener("mouseleave", () => { mx = my = -9999; }, { passive: true });
+
+  // slow drifting motes (space-dust), independent of the cursor, for a constant gentle ambiance
+  const motes = Array.from({ length: 22 }, () => ({
+    x: Math.random(), y: Math.random(), s: Math.random() * 2 + .8,
+    sp: Math.random() * .00035 + .00012, drift: (Math.random() - .5) * .0004, p: Math.random() * 6.28
+  }));
+
+  let paused = document.hidden;
+  document.addEventListener("visibilitychange", () => { paused = document.hidden; });
+
+  (function draw(ts) {
+    requestAnimationFrame(draw);
+    if (paused || !c.isConnected) return;
+    ts = ts || 0;
+    ctx.clearRect(0, 0, W, H);
+
+    if (mx > -1000 && (!trail.length || Math.hypot(mx - trail[trail.length - 1].x, my - trail[trail.length - 1].y) > 6)) {
+      trail.push({ x: mx, y: my, born: ts });
+      if (trail.length > 24) trail.shift();
+    }
+    trail = trail.filter(t => ts - t.born < 1400);
+
+    const RAD = 130; // glow radius (CSS px) around each trail point
+    const lit = new Map();
+    trail.forEach(t => {
+      const life = 1 - (ts - t.born) / 1400;
+      const ix0 = Math.floor((t.x - RAD) / GAP), ix1 = Math.ceil((t.x + RAD) / GAP);
+      const iy0 = Math.floor((t.y - RAD) / GAP), iy1 = Math.ceil((t.y + RAD) / GAP);
+      for (let iy = iy0; iy <= iy1; iy++) for (let ix = ix0; ix <= ix1; ix++) {
+        const px = ix * GAP, py = iy * GAP, d = Math.hypot(px - t.x, py - t.y);
+        if (d > RAD) continue;
+        const k = (1 - d / RAD) * life, key = ix + "," + iy;
+        if (!lit.has(key) || lit.get(key) < k) lit.set(key, k);
+      }
+    });
+    lit.forEach((k, key) => {
+      const p = key.split(",");
+      const px = p[0] * GAP * R, py = p[1] * GAP * R, r = (1 + k * 2.2) * R;
+      ctx.beginPath(); ctx.arc(px, py, r, 0, 6.283);
+      ctx.fillStyle = `rgba(${k > .6 ? "138,92,255" : "77,163,255"},${Math.min(.85, .15 + k * .9)})`;
+      ctx.fill();
+    });
+
+    motes.forEach(m => {
+      m.p += m.sp; m.y -= m.sp * 6; m.x += m.drift;
+      if (m.y < -.02) m.y = 1.02;
+      if (m.x < -.02) m.x = 1.02; if (m.x > 1.02) m.x = -.02;
+      const px = m.x * innerWidth * R, py = m.y * innerHeight * R, a = .25 + .2 * Math.sin(m.p * 6);
+      ctx.beginPath(); ctx.arc(px, py, m.s * R, 0, 6.283);
+      ctx.fillStyle = `rgba(180,200,255,${a})`; ctx.fill();
+    });
+  })();
+})();
 
 let files = [], history = [];
 const esc = s => s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
