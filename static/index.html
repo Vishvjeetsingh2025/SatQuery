@@ -59,6 +59,9 @@ h2{font-size:1.1rem;margin-bottom:1rem}
 #ambientDots{position:fixed;inset:0;z-index:-2;pointer-events:none;
   background-image:radial-gradient(rgba(170,255,150,.16) 1px,transparent 1.6px);background-size:28px 28px}
 #ambientGlow{position:fixed;inset:0;z-index:-1;pointer-events:none;width:100vw;height:100vh}
+#globalTendrils{position:fixed;inset:0;z-index:-1;pointer-events:none;width:100vw;height:100vh;
+  animation:tendrilPulse 5s ease-in-out infinite}
+@keyframes tendrilPulse{0%,100%{opacity:.5}50%{opacity:.85}}
 .dot{animation:p 1s infinite}@keyframes p{50%{opacity:.3}}
 #chips{display:flex;gap:.5rem;flex-wrap:wrap;margin:.8rem 0}
 #chips button{background:none;border:1px solid var(--line);color:var(--mut);border-radius:99px;padding:.35rem .9rem;font-size:.8rem;cursor:pointer}
@@ -305,6 +308,31 @@ html:not([data-page]),html[data-page="home"],html[data-page="login"]{--acc:#baff
 .map-hint{color:var(--mut);font-size:.78rem;line-height:1.5}
 @media(max-width:900px){.map-wrap{grid-template-columns:1fr}#leafletMap{height:50vh}}
 
+/* ---------- Realistic rotating dotted-particle Earth (Watchlist page) ---------- */
+.wl-globe-wrap{position:relative;max-width:1400px;margin:0 auto 1.6rem;padding:0 4vw;height:240px;overflow:hidden}
+.wl-globe-wrap::before{content:"";position:absolute;inset:0 4vw;border-radius:20px;
+  background:radial-gradient(60% 90% at 78% 50%,rgba(255,95,109,.12),transparent 70%);pointer-events:none}
+#wlGlobe{position:absolute;inset:0;width:100%;height:100%}
+.wl-globe-tags{position:absolute;inset:0;pointer-events:none}
+.wl-globe-tags span{position:absolute;transform:translate(-50%,-100%);font-size:.66rem;font-family:ui-monospace,monospace;
+  background:#000000b0;color:var(--tx);padding:2px 7px;border-radius:5px;border:1px solid var(--acc);white-space:nowrap;
+  opacity:0;transition:opacity .25s;top:0;left:0}
+@media(max-width:900px){.wl-globe-wrap{height:170px}}
+
+/* ---------- Map Explorer: labels toggle + location search ---------- */
+.map-search{display:flex;gap:.5rem;max-width:1400px;margin:0 auto;padding:0 4vw 1rem}
+.map-search input{flex:1;background:#ffffff0d;border:1px solid var(--line);border-radius:10px;padding:.65rem .9rem;color:var(--tx);font-size:.88rem;outline:none}
+.map-search input:focus{border-color:var(--acc)}
+.map-search button{border:0;border-radius:10px;padding:0 1.1rem;font-weight:700;cursor:pointer;color:#0a0f05;
+  background:linear-gradient(90deg,var(--acc),var(--acc2));white-space:nowrap}
+.map-labels-toggle{display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--mut);cursor:pointer;user-select:none;margin-top:.3rem}
+.map-labels-toggle input{accent-color:var(--acc)}
+.map-load-error{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:.7rem;
+  background:#0a0f05dd;border-radius:18px;text-align:center;padding:1.5rem;color:var(--mut);font-size:.85rem;z-index:5}
+.map-load-error button{border:0;border-radius:10px;padding:.55rem 1.2rem;font-weight:700;cursor:pointer;color:#0a0f05;
+  background:linear-gradient(90deg,var(--acc),var(--acc2))}
+#leafletMap{position:relative}
+
 /* ==================== Dashboard page ==================== */
 .dash-grid{max-width:1400px;margin:1.4rem auto 5rem;padding:0 4vw;display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
 .dash-card{background:linear-gradient(180deg,#ffffff0d,#ffffff03);border:1px solid var(--line);border-radius:18px;padding:1.4rem}
@@ -340,6 +368,9 @@ html:not([data-page]),html[data-page="home"],html[data-page="login"]{--acc:#baff
 </style>
 </head>
 <body>
+<div id="ambientDots"></div>
+<canvas id="ambientGlow"></canvas>
+<canvas id="globalTendrils"></canvas>
 <nav id="sidebar">
   <a href="#/home" class="brand">🛰️ SatQuery<span>AI</span></a>
   <div class="sidenav">
@@ -371,8 +402,6 @@ html:not([data-page]),html[data-page="home"],html[data-page="login"]{--acc:#baff
 </div>
 
 <div class="page active" id="page-home">
-<div id="ambientDots"></div>
-<canvas id="ambientGlow"></canvas>
 <section id="hero">
   <div id="bg"><div class="stars"></div><canvas id="stars"></canvas><canvas id="cloudsCanvas"></canvas><canvas id="petalsCanvas"></canvas><canvas id="tendrilsCanvas"></canvas><canvas id="moonCanvas"></canvas><canvas id="grassCanvas"></canvas></div>
   <div id="sat"><canvas id="satCanvas"></canvas></div>
@@ -459,6 +488,10 @@ html:not([data-page]),html[data-page="home"],html[data-page="login"]{--acc:#baff
 
 <div class="page" id="page-watchlist">
   <div class="page-head"><h2>🚨 Watchlist</h2><p>Save a baseline image for any area. Every future check compares against it automatically — with an instant alert if something changed.</p></div>
+  <div class="wl-globe-wrap reveal">
+    <canvas id="wlGlobe"></canvas>
+    <div class="wl-globe-tags" id="wlGlobeTags"></div>
+  </div>
   <div class="wl-toolbar">
     <input id="wlBaselineFile" type="file" accept="image/*" hidden>
     <button type="button" class="smallbtn" id="saveWL" style="padding:.6rem 1.1rem;font-size:.85rem">+ New Watchlist (upload a baseline image)</button>
@@ -473,17 +506,23 @@ html:not([data-page]),html[data-page="home"],html[data-page="login"]{--acc:#baff
 </div>
 
 <div class="page" id="page-map">
-  <div class="page-head"><h2>🗺️ Map Explorer</h2><p>Click anywhere on Earth to pull real satellite imagery of that exact spot — then send it straight to the Analyst or save it as a Watchlist baseline. No screenshots, no Google Earth needed.</p></div>
-  <div style="display:flex;gap:8px;margin:0 0 14px">
-    <input type="text" id="mapSearchInput" placeholder="Search a place… e.g. Eiffel Tower, Paris">
-    <button type="button" class="go2" id="mapSearchBtn" style="width:auto;white-space:nowrap">🔎 Search</button>
-  </div>
+  <div class="page-head"><h2>🗺️ Map Explorer</h2><p>Click anywhere on Earth to pull real satellite imagery of that exact spot — then send it straight to the Analyst or save it as a Watchlist baseline. No screenshots, no Google Earth needed. Or search a place by name below to jump straight to its coordinates.</p></div>
+  <form class="map-search" id="mapSearchForm">
+    <input id="mapSearchInput" type="text" placeholder="Search a place by name… e.g. Nahargarh Fort, Jaipur" autocomplete="off">
+    <button type="submit">🔍 Find</button>
+  </form>
   <div class="map-wrap">
-    <div id="leafletMap"></div>
+    <div id="leafletMap">
+      <div class="map-load-error" id="mapLoadError">
+        <span>⚠️ The map couldn't load — check your connection.</span>
+        <button type="button" id="mapRetryBtn">Retry</button>
+      </div>
+    </div>
     <div class="map-side">
       <h3>📍 Selected location</h3>
       <div class="coords" id="mapCoords">Click on the map, or search a place name above…</div>
       <div class="place" id="mapPlace"></div>
+      <label class="map-labels-toggle"><input type="checkbox" id="mapLabelsToggle" checked> Show place-name labels on the map</label>
       <div class="osmcredit">Basemap: Esri World Imagery · Place lookup: OpenStreetMap Nominatim</div>
       <div>
         <label style="font-size:.78rem;color:var(--mut)">Capture radius</label>
@@ -926,6 +965,38 @@ const $ = id => document.getElementById(id);
 })();
 
 
+// ---------------- Neon tendrils fixed to the viewport (visible on every page/section, not just the hero) ----------------
+(function () {
+  const c = document.getElementById("globalTendrils"); if (!c) return;
+  const gx = c.getContext("2d"), R = Math.min(window.devicePixelRatio || 1, 2);
+  function build() {
+    const W = c.width = innerWidth * R, H = c.height = innerHeight * R;
+    c.style.width = innerWidth + "px"; c.style.height = innerHeight + "px";
+    gx.clearRect(0, 0, W, H);
+    const TCOLOR = "186,255,57";
+    function grow(x, y, ang, len, depth) {
+      if (depth <= 0 || len < 6) return;
+      const steps = 4 + Math.floor(Math.random() * 4), stepLen = len / steps;
+      let cx = x, cy = y, a = ang;
+      for (let i = 0; i < steps; i++) {
+        a += (Math.random() - .5) * .7;
+        const nx = cx + Math.cos(a) * stepLen, ny = cy + Math.sin(a) * stepLen;
+        gx.lineWidth = Math.max(1, depth * .8) * R;
+        gx.strokeStyle = `rgba(${TCOLOR},.4)`;
+        gx.shadowColor = `rgba(${TCOLOR},.8)`; gx.shadowBlur = 4 * R;
+        gx.beginPath(); gx.moveTo(cx, cy); gx.lineTo(nx, ny); gx.stroke();
+        cx = nx; cy = ny;
+        if (Math.random() < .22 && depth > 1) grow(cx, cy, a + (Math.random() < .5 ? 1 : -1) * (.7 + Math.random() * .6), len * .5, depth - 1);
+      }
+      if (depth > 1) grow(cx, cy, a, len * .72, depth - 1);
+    }
+    [[0, H, -.35, W * .3], [W, H, Math.PI + .35, W * .3]].forEach(a => grow(a[0], a[1], a[2], a[3], 4));
+    gx.shadowBlur = 0;
+  }
+  build();
+  let t; addEventListener("resize", () => { clearTimeout(t); t = setTimeout(build, 200); });
+})();
+
 // ---------------- Ambient background: reactive dot-grid glow + drifting space-dust (whole page, all sections) ----------------
 (function () {
   const c = document.getElementById("ambientGlow"); if (!c) return;
@@ -1078,7 +1149,7 @@ function renderRoute() {
   document.querySelectorAll(".sidenav a").forEach(a => a.classList.toggle("on", a.dataset.route === r));
   $("sidebar").classList.toggle("hide", r === "login");
   $("pages").classList.toggle("full", r === "login");
-  if (r === "watchlist") loadWatchlist();
+  if (r === "watchlist") { loadWatchlist(); initGlobe(); }
   if (r === "history") loadHistory();
   if (r === "map") initMap();
   if (r === "dashboard") loadDashboard();
@@ -1088,69 +1159,78 @@ addEventListener("hashchange", renderRoute);
 renderRoute();
 
 // ==================== Map Explorer: click anywhere on Earth → real satellite imagery ====================
-let mapInitialized = false, leafletMap = null, mapMarker = null, clickedLat = null, clickedLon = null, lastImgBlob = null;
+let mapInitialized = false, leafletMap = null, mapMarker = null, clickedLat = null, clickedLon = null, lastImgBlob = null, labelsLayer = null;
 
-// Fetch with a hard timeout: without this, a slow/unresponsive Nominatim or Esri endpoint just hangs the
-// button forever with no error, which is the "sometimes it freezes" behaviour — this guarantees it always
-// resolves one way or another within a few seconds.
-async function fetchTimeout(url, ms = 12000) {
+// Every network call on this page now goes through this — so a slow/unreachable service fails
+// after a few seconds with a clear message instead of leaving a button stuck forever.
+function fetchWithTimeout(url, opts = {}, ms = 9000) {
   const ctrl = new AbortController();
-  const id = setTimeout(() => ctrl.abort(), ms);
-  try { return await fetch(url, { signal: ctrl.signal }); }
-  finally { clearTimeout(id); }
+  const t = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(t));
 }
 
-function selectLocation(lat, lon, placeName) {
-  clickedLat = lat; clickedLon = lon;
-  if (mapMarker) leafletMap.removeLayer(mapMarker);
-  mapMarker = L.marker([lat, lon]).addTo(leafletMap);
-  $("mapCoords").textContent = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-  $("mapPlace").textContent = placeName || "Unnamed location";
-  $("mapPreview").style.display = "none"; lastImgBlob = null;
-  $("mapUseBtn").disabled = true; $("mapWlBtn").disabled = true;
-  $("mapFetchBtn").disabled = false;
-}
-
-function initMap() {
+function initMap(retries = 0) {
   if (mapInitialized) { setTimeout(() => leafletMap && leafletMap.invalidateSize(), 60); return; }
-  if (!window.L) { setTimeout(initMap, 200); return; }   // Leaflet script (deferred) may still be loading
+  if (!window.L) {
+    if (retries > 25) { $("mapLoadError").style.display = "flex"; return; }   // ~5s of retrying, then give up cleanly instead of hanging forever
+    setTimeout(() => initMap(retries + 1), 200);
+    return;
+  }
+  $("mapLoadError").style.display = "none";
   mapInitialized = true;
   leafletMap = L.map("leafletMap").setView([26.9124, 75.7873], 12);  // default: Jaipur
   L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
     attribution: "Tiles &copy; Esri", maxZoom: 19
   }).addTo(leafletMap);
+  labelsLayer = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {
+    attribution: "Labels &copy; Esri", maxZoom: 19, pane: "overlayPane"
+  }).addTo(leafletMap);   // place-name / city-name labels drawn over the satellite imagery
   leafletMap.on("click", onMapClick);
   setTimeout(() => leafletMap.invalidateSize(), 100);
 }
+$("mapRetryBtn").onclick = () => { mapInitialized = false; window.L ? initMap() : location.reload(); };
+$("mapLabelsToggle").onchange = e => {
+  if (!labelsLayer) return;
+  if (e.target.checked) labelsLayer.addTo(leafletMap); else leafletMap.removeLayer(labelsLayer);
+};
 
 async function onMapClick(e) {
-  selectLocation(e.latlng.lat, e.latlng.lng, "Looking up place name…");
+  clickedLat = e.latlng.lat; clickedLon = e.latlng.lng;
+  if (mapMarker) leafletMap.removeLayer(mapMarker);
+  mapMarker = L.marker([clickedLat, clickedLon]).addTo(leafletMap);
+  $("mapCoords").textContent = `${clickedLat.toFixed(5)}, ${clickedLon.toFixed(5)}`;
+  $("mapPlace").textContent = "Looking up place name…";
+  $("mapPreview").style.display = "none"; lastImgBlob = null;
+  $("mapUseBtn").disabled = true; $("mapWlBtn").disabled = true;
+  $("mapFetchBtn").disabled = false;
   try {
-    const r = await fetchTimeout(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${e.latlng.lat}&lon=${e.latlng.lng}&zoom=14`);
+    const r = await fetchWithTimeout(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${clickedLat}&lon=${clickedLon}&zoom=14`, {}, 7000);
     const d = await r.json();
     $("mapPlace").textContent = d.display_name || "Unnamed location";
-  } catch (err) { $("mapPlace").textContent = "(place lookup unavailable)"; }
+  } catch (err) { $("mapPlace").textContent = err.name === "AbortError" ? "(place lookup timed out)" : "(place lookup unavailable)"; }
 }
 
-// Search a place by name → geocode it, fly the map there, and drop a pin (the reverse of clicking:
-// instead of pointing on the map to get coordinates, type a name to get its coordinates).
-$("mapSearchBtn").onclick = async () => {
+// ---- Search a place by name → fly the map to it, drop a pin, and fill in its coordinates ----
+$("mapSearchForm").onsubmit = async e => {
+  e.preventDefault();
   const q = $("mapSearchInput").value.trim();
   if (!q) return;
   if (!mapInitialized) initMap();
-  $("mapSearchBtn").disabled = true; $("mapSearchBtn").textContent = "Searching…";
+  const btn = e.target.querySelector("button");
+  const oldTxt = btn.textContent; btn.disabled = true; btn.textContent = "Searching…";
   try {
-    const r = await fetchTimeout(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`);
-    if (!r.ok) throw new Error("lookup service unavailable");
-    const d = await r.json();
-    if (!d.length) { alert("Couldn't find that place — try a more specific name."); return; }
-    const lat = parseFloat(d[0].lat), lon = parseFloat(d[0].lon);
+    const r = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`, {}, 8000);
+    const rows = await r.json();
+    if (!rows.length) { alert("Couldn't find that place — try a more specific name."); return; }
+    const lat = parseFloat(rows[0].lat), lon = parseFloat(rows[0].lon);
     leafletMap.setView([lat, lon], 14);
-    selectLocation(lat, lon, d[0].display_name);
-  } catch (err) { alert(err.name === "AbortError" ? "Search timed out — try again." : "Search failed: " + err.message); }
-  $("mapSearchBtn").disabled = false; $("mapSearchBtn").textContent = "🔎 Search";
+    onMapClick({ latlng: { lat, lng: lon } });
+    $("mapPlace").textContent = rows[0].display_name || q;
+  } catch (err) {
+    alert(err.name === "AbortError" ? "Search timed out — please try again." : "Search failed: " + err.message);
+  }
+  btn.disabled = false; btn.textContent = oldTxt;
 };
-$("mapSearchInput").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("mapSearchBtn").click(); } });
 
 $("mapFetchBtn").onclick = async () => {
   if (clickedLat === null) return;
@@ -1159,13 +1239,13 @@ $("mapFetchBtn").onclick = async () => {
   const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bbox}&bboxSR=4326&imageSR=4326&size=640,640&format=png32&f=image`;
   $("mapFetchBtn").disabled = true; $("mapFetchBtn").textContent = "Fetching imagery…";
   try {
-    const r = await fetchTimeout(url);
+    const r = await fetchWithTimeout(url, {}, 12000);
     if (!r.ok) throw new Error("imagery service unavailable");
     lastImgBlob = await r.blob();
     $("mapPreview").src = URL.createObjectURL(lastImgBlob);
     $("mapPreview").style.display = "block";
     $("mapUseBtn").disabled = false; $("mapWlBtn").disabled = false;
-  } catch (err) { alert(err.name === "AbortError" ? "Imagery fetch timed out — try again." : "Could not fetch imagery: " + err.message); }
+  } catch (err) { alert(err.name === "AbortError" ? "Fetching imagery timed out — please try again." : "Could not fetch imagery: " + err.message); }
   $("mapFetchBtn").disabled = false; $("mapFetchBtn").textContent = "📡 Fetch satellite image here";
 };
 
@@ -1186,12 +1266,105 @@ $("mapWlBtn").onclick = async () => {
   fd.append("file", new File([lastImgBlob], "baseline.png", { type: "image/png" }));
   $("mapWlBtn").disabled = true; $("mapWlBtn").textContent = "Saving…";
   try {
-    const r = await fetch("/api/watchlist/save", { method: "POST", body: fd, headers: authHeaders() });
+    const r = await fetchWithTimeout("/api/watchlist/save", { method: "POST", body: fd, headers: authHeaders() }, 15000);
     if (!r.ok) throw new Error((await r.json()).error || "save failed");
     alert("Saved to Watchlist ✅"); await loadWatchlist();
-  } catch (err) { alert("Could not save: " + err.message); }
+  } catch (err) { alert(err.name === "AbortError" ? "Saving timed out — please try again." : "Could not save: " + err.message); }
   $("mapWlBtn").disabled = false; $("mapWlBtn").textContent = "🚨 Save as Watchlist baseline";
 };
+
+// ==================== Realistic rotating dotted-particle Earth (Watchlist page) ====================
+let globeInitialized = false;
+function initGlobe() {
+  if (globeInitialized) return;
+  const c = $("wlGlobe"); if (!c) return;
+  globeInitialized = true;
+  const gx = c.getContext("2d"), R = Math.min(window.devicePixelRatio || 1, 2);
+  let W, H;
+  const size = () => { const r = c.getBoundingClientRect(); W = c.width = r.width * R; H = c.height = r.height * R; };
+  size(); addEventListener("resize", size);
+
+  // Rough landmass silhouettes as scattered lat/lon dot clusters — stylised, not survey-accurate,
+  // same spirit as the reference globe (a dotted sphere, not a literal textured map).
+  const LAND_REGIONS = [
+    [[15, 70], [-160, -60]],   // North America
+    [[-55, 12], [-80, -35]],    // South America
+    [[36, 71], [-10, 40]],      // Europe
+    [[-35, 37], [-18, 50]],     // Africa
+    [[5, 55], [45, 140]],       // Asia
+    [[-45, -10], [113, 154]],   // Australia
+  ];
+  const pts = [];
+  LAND_REGIONS.forEach(([[lat0, lat1], [lon0, lon1]]) => {
+    const n = 55;
+    for (let i = 0; i < n; i++) {
+      const lat = lat0 + Math.random() * (lat1 - lat0);
+      const lon = lon0 + Math.random() * (lon1 - lon0);
+      if (Math.random() < 0.62) pts.push([lat, lon]);   // uneven density = rougher, more organic coastline feel
+    }
+  });
+
+  // Labels: the user's own watchlist area names, placed at a deterministic (hashed) point on the sphere.
+  let labelPts = [];
+  function hash(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
+  window.__setGlobeLabels = names => {
+    const list = (names && names.length ? names : ["Delhi", "Jaipur", "Mumbai", "Bengaluru"]).slice(0, 6);
+    labelPts = list.map(name => {
+      const h = hash(name);
+      return { name, lat: (h % 100) - 50, lon: ((h >> 3) % 300) - 150 };
+    });
+    const tagWrap = $("wlGlobeTags");
+    tagWrap.innerHTML = labelPts.map((p, i) => `<span data-i="${i}"></span>`).join("");
+  };
+  window.__setGlobeLabels();
+
+  let rot = 0;
+  const tilt = 18 * Math.PI / 180;
+  function project(latDeg, lonDeg, cx, cy, radius) {
+    const lat = latDeg * Math.PI / 180, lon = lonDeg * Math.PI / 180 + rot;
+    const x0 = Math.cos(lat) * Math.sin(lon), y0 = Math.sin(lat), z0 = Math.cos(lat) * Math.cos(lon);
+    const y1 = y0 * Math.cos(tilt) - z0 * Math.sin(tilt), z1 = y0 * Math.sin(tilt) + z0 * Math.cos(tilt);
+    return { x: cx + x0 * radius, y: cy - y1 * radius, z: z1 };
+  }
+
+  (function draw() {
+    requestAnimationFrame(draw);
+    if (!c.isConnected || document.documentElement.dataset.page !== "watchlist") return;
+    rot += 0.0028;
+    gx.clearRect(0, 0, W, H);
+    const cx = W * 0.78, cy = H * 0.52, radius = Math.min(W, H) * 0.42;
+
+    gx.beginPath(); gx.arc(cx, cy, radius * 1.06, 0, 6.283);
+    const glow = gx.createRadialGradient(cx, cy, radius * 0.7, cx, cy, radius * 1.15);
+    glow.addColorStop(0, "rgba(255,95,109,.22)"); glow.addColorStop(1, "rgba(255,95,109,0)");
+    gx.fillStyle = glow; gx.fill();
+
+    gx.beginPath(); gx.arc(cx, cy, radius, 0, 6.283);
+    gx.fillStyle = "rgba(255,255,255,.03)"; gx.fill();
+    gx.strokeStyle = "rgba(255,182,72,.18)"; gx.lineWidth = 1 * R; gx.stroke();
+
+    pts.forEach(([lat, lon]) => {
+      const p = project(lat, lon, cx, cy, radius);
+      if (p.z <= -0.08) return;
+      const depth = Math.max(0, (p.z + 0.08) / 1.08);
+      gx.beginPath(); gx.arc(p.x, p.y, (1.1 + depth * 1.6) * R, 0, 6.283);
+      gx.fillStyle = `rgba(255,${Math.round(150 + depth * 60)},${Math.round(90 + depth * 30)},${0.35 + depth * 0.55})`;
+      gx.fill();
+    });
+
+    labelPts.forEach((p, i) => {
+      const proj = project(p.lat, p.lon, cx, cy, radius);
+      const el = $("wlGlobeTags").querySelector(`[data-i="${i}"]`);
+      if (!el) return;
+      if (proj.z > 0.15) {
+        const cssX = proj.x / R, cssY = proj.y / R;
+        el.style.left = cssX + "px"; el.style.top = (cssY - 8) + "px";
+        el.style.opacity = Math.min(1, (proj.z - 0.15) * 3);
+        el.textContent = p.name;
+      } else el.style.opacity = 0;
+    });
+  })();
+}
 
 // ==================== Voice input (Web Speech API, browser-native, no API key) ====================
 (function setupVoice() {
@@ -1422,6 +1595,7 @@ async function loadWatchlist() {
     const r = await fetch("/api/watchlist", { headers: authHeaders() });
     if (r.status === 401) { $("wlList").innerHTML = lockedNote(); return; }
     const rows = await r.json();
+    if (window.__setGlobeLabels) window.__setGlobeLabels(rows.map(w => w.name));
     if (!rows.length) { $("wlList").innerHTML = "No watchlist areas saved yet."; return; }
     $("wlList").innerHTML = rows.map(w => {
       let alertHtml = "";
