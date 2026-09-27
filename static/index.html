@@ -4,31 +4,39 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SatQuery AI</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" defer></script>
 <style>
-:root{--bg:#050816;--card:rgba(255,255,255,.06);--line:rgba(255,255,255,.12);--acc:#4da3ff;--acc2:#8a5cff;--tx:#e8ecff;--mut:#8b93b8}
+:root{--bg:#000000;--card:rgba(255,255,255,.06);--line:rgba(255,255,255,.12);--acc:#baff39;--acc2:#5cffa3;--tx:#e8ecff;--mut:#8b93b8}
 *{box-sizing:border-box;margin:0}html{scroll-behavior:smooth}
 body{background:var(--bg);color:var(--tx);font-family:Inter,system-ui,sans-serif}
-#hero{position:relative;height:100vh;overflow:hidden;
-  background:radial-gradient(circle at 70% 30%,#1b2a6b 0,transparent 45%),radial-gradient(circle at 20% 80%,#3a1b6b 0,transparent 40%),var(--bg)}
+#hero{position:relative;height:100vh;overflow:hidden;background:var(--bg)}
 #bg,#bg canvas{position:absolute;inset:0;width:100%;height:100%}
-#sat{position:absolute;right:0;top:0;width:48%;height:100%;mix-blend-mode:screen;pointer-events:none} /* screen = dark scene bg turns see-through, glow shows through the satellite layer */
+#sat{position:absolute;inset:0;width:100%;height:100%;mix-blend-mode:screen;pointer-events:none} /* screen = dark scene bg turns see-through, glow shows through the satellite layer; full-width so the orbit sweeps across the whole hero, not just one side */
 #sat canvas{position:absolute;inset:0;width:100%;height:100%;border:0}
 @media(max-width:900px){#sat{width:100%;opacity:.5}}
-.stars{position:absolute;inset:0;background-image:radial-gradient(3px 3px at 40px 50px,#fff,transparent),radial-gradient(2px 2px at 150px 130px,#cfe2ff,transparent),radial-gradient(4px 4px at 230px 40px,#fff,transparent),radial-gradient(2.5px 2.5px at 90px 210px,#b9a6ff,transparent);background-size:280px 280px;animation:drift 60s linear infinite;opacity:.9}
+.stars{position:absolute;inset:0;background-image:radial-gradient(3px 3px at 40px 50px,#fff,transparent),radial-gradient(2px 2px at 150px 130px,#cfe2ff,transparent),radial-gradient(4px 4px at 230px 40px,#fff,transparent),radial-gradient(2.5px 2.5px at 90px 210px,#a6ffb9,transparent);background-size:280px 280px;animation:drift 60s linear infinite;opacity:.9}
 @keyframes drift{to{background-position:-400px 400px}}
 .overlay{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:0 8vw;pointer-events:none;max-width:780px}
 .tag{color:var(--acc);letter-spacing:.2em;font-size:.8rem;text-transform:uppercase;margin-bottom:1rem}
-h1{font-size:clamp(3rem,9vw,7rem);line-height:1;font-weight:800}
-h1 span{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;color:transparent}
+h1{font-size:clamp(3rem,9vw,7rem);line-height:1;font-weight:800;position:relative;
+  background:linear-gradient(100deg,var(--tx) 0%,var(--acc) var(--gx,35%),var(--acc2) calc(var(--gx,35%) + 25%),var(--tx) 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;transition:background-position .25s linear}
+h1::after{content:attr(data-text);position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(100deg,transparent 35%,rgba(255,255,255,.85) 48%,rgba(255,255,255,.85) 52%,transparent 65%);
+  background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:shine 6s ease-in-out infinite}
+@keyframes shine{0%,45%{background-position:180% 0}100%{background-position:-80% 0}}
+h1 span{background:inherit;-webkit-background-clip:text;color:transparent}
 .sub{color:var(--mut);font-size:1.2rem;margin:1.2rem 0 2rem;max-width:520px}
-.btn{pointer-events:auto;align-self:flex-start;padding:.9rem 2rem;border-radius:99px;color:#fff;text-decoration:none;font-weight:600;background:linear-gradient(90deg,var(--acc),var(--acc2));box-shadow:0 0 30px #4da3ff66;transition:.2s}
-.btn:hover{transform:translateY(-2px);box-shadow:0 0 45px #8a5cffaa}
+.btn{pointer-events:auto;align-self:flex-start;padding:.9rem 2rem;border-radius:99px;color:#fff;text-decoration:none;font-weight:600;background:linear-gradient(90deg,var(--acc),var(--acc2));box-shadow:0 0 30px #baff3966;transition:.2s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 0 45px #5cffa3aa}
 #app{min-height:100vh;padding:5rem 5vw;display:grid;grid-template-columns:1fr 1.2fr;gap:1.5rem;max-width:1400px;margin:auto}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:1.4rem;backdrop-filter:blur(8px);contain:layout paint style}
 #hero{content-visibility:auto;contain-intrinsic-size:100vh}
 h2{font-size:1.1rem;margin-bottom:1rem}
 #drop{border:2px dashed var(--line);border-radius:14px;padding:2rem;text-align:center;color:var(--mut);cursor:pointer;transition:.2s}
-#drop.over,#drop:hover{border-color:var(--acc);color:var(--tx);background:#4da3ff14}
+#drop.over,#drop:hover{border-color:var(--acc);color:var(--tx);background:#baff3914}
 #grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin-top:1rem}
 .th{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;border:2px solid transparent;transition:.3s}
 .th img{width:100%;height:100%;object-fit:cover}
@@ -40,7 +48,7 @@ h2{font-size:1.1rem;margin-bottom:1rem}
 .m{padding:.8rem 1rem;border-radius:14px;max-width:92%;line-height:1.5;font-size:.95rem}
 .u{align-self:flex-end;background:linear-gradient(90deg,var(--acc),var(--acc2))}
 .a{align-self:flex-start;background:#ffffff0d;border:1px solid var(--line)}
-.chip{display:inline-block;font-size:.7rem;padding:2px 10px;border-radius:99px;background:#4da3ff33;color:var(--acc);margin-top:.6rem}
+.chip{display:inline-block;font-size:.7rem;padding:2px 10px;border-radius:99px;background:#baff3933;color:var(--acc);margin-top:.6rem}
 .ev{color:var(--mut);font-size:.85rem;margin:.6rem 0 0 1rem}
 .rel{display:flex;gap:.5rem;margin-top:.7rem;flex-wrap:wrap}.rel div{width:74px;font-size:.7rem;text-align:center}.rel img{width:74px;height:74px;object-fit:cover;border-radius:8px;border:1px solid var(--acc)}
 .chg{display:flex;gap:.8rem;margin-top:.8rem;font-size:.82rem;color:var(--mut);align-items:center}.chg img{width:150px;border-radius:8px;border:1px solid #ff5050}
@@ -49,15 +57,23 @@ h2{font-size:1.1rem;margin-bottom:1rem}
 
 /* ---------- Ambient page-wide dot-grid glow (mouse-reactive, sits behind everything) ---------- */
 #ambientDots{position:fixed;inset:0;z-index:-2;pointer-events:none;
-  background-image:radial-gradient(rgba(140,170,255,.16) 1px,transparent 1.6px);background-size:28px 28px}
+  background-image:radial-gradient(rgba(170,255,150,.16) 1px,transparent 1.6px);background-size:28px 28px}
 #ambientGlow{position:fixed;inset:0;z-index:-1;pointer-events:none;width:100vw;height:100vh}
+#globalTendrils{position:fixed;inset:0;z-index:-1;pointer-events:none;width:100vw;height:100vh;
+  animation:tendrilPulse 5s ease-in-out infinite}
+@keyframes tendrilPulse{0%,100%{opacity:.5}50%{opacity:.85}}
 .dot{animation:p 1s infinite}@keyframes p{50%{opacity:.3}}
 #chips{display:flex;gap:.5rem;flex-wrap:wrap;margin:.8rem 0}
 #chips button{background:none;border:1px solid var(--line);color:var(--mut);border-radius:99px;padding:.35rem .9rem;font-size:.8rem;cursor:pointer}
 #chips button:hover{color:var(--tx);border-color:var(--acc)}
 form{display:flex;gap:.6rem}
-input[type=text]{flex:1;background:#ffffff0d;border:1px solid var(--line);border-radius:12px;padding:.85rem 1rem;color:var(--tx);outline:none}
-input[type=text]:focus{border-color:var(--acc)}
+input[type=text]{flex:1;background:#ffffff0d;border:1px solid var(--line);border-radius:12px;padding:.85rem 1rem;color:var(--tx);outline:none;
+  box-shadow:0 0 0 1px rgba(186,255,57,.3),0 0 26px -2px rgba(186,255,57,.55),0 0 50px -10px rgba(92,255,163,.4);
+  transition:box-shadow .3s,border-color .3s;animation:inputGlowPulse 2.6s ease-in-out infinite}
+@keyframes inputGlowPulse{0%,100%{box-shadow:0 0 0 1px rgba(186,255,57,.3),0 0 26px -2px rgba(186,255,57,.55),0 0 50px -10px rgba(92,255,163,.4)}
+  50%{box-shadow:0 0 0 1px rgba(186,255,57,.5),0 0 40px -2px rgba(186,255,57,.85),0 0 70px -8px rgba(92,255,163,.6)}}
+input[type=text]:focus{border-color:var(--acc);animation:none;
+  box-shadow:0 0 0 1.5px var(--acc),0 0 46px -2px rgba(186,255,57,.95),0 0 80px -8px rgba(92,255,163,.7)}
 form button{border:0;border-radius:12px;padding:0 1.4rem;color:#fff;font-weight:600;cursor:pointer;background:linear-gradient(90deg,var(--acc),var(--acc2))}
 @media(max-width:900px){#app{grid-template-columns:1fr}#chat{height:70vh}}
 .side{display:flex;flex-direction:column;gap:1.5rem}
@@ -65,7 +81,7 @@ form button{border:0;border-radius:12px;padding:0 1.4rem;color:#fff;font-weight:
 .hrow{background:#ffffff08;border:1px solid var(--line);border-radius:10px;padding:.6rem .7rem;font-size:.8rem;display:flex;justify-content:space-between;gap:.5rem;align-items:center}
 .hrow .txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;color:var(--tx)}
 .hrow .meta{color:var(--mut);font-size:.7rem}
-.pill{font-size:.65rem;padding:1px 8px;border-radius:99px;background:#4da3ff33;color:var(--acc);white-space:nowrap}
+.pill{font-size:.65rem;padding:1px 8px;border-radius:99px;background:#baff3933;color:var(--acc);white-space:nowrap}
 .mini a{color:var(--acc);text-decoration:none;font-size:.75rem;white-space:nowrap}
 .wl-item{background:#ffffff08;border:1px solid var(--line);border-radius:10px;padding:.7rem;font-size:.82rem;margin-top:.6rem}
 .wl-item .top{display:flex;justify-content:space-between;align-items:center}
@@ -76,37 +92,21 @@ form button{border:0;border-radius:12px;padding:0 1.4rem;color:#fff;font-weight:
 .smallbtn:hover{border-color:var(--acc)}
 .rpt-link{font-size:.72rem;color:var(--acc);text-decoration:none;margin-left:.6rem}
 
-/* ---------- Auth widget + modal ---------- */
-#authPill{position:fixed;top:1.2rem;right:1.4rem;z-index:50;display:flex;align-items:center;gap:.6rem;
-  background:rgba(10,14,32,.55);border:1px solid var(--line);backdrop-filter:blur(14px);border-radius:99px;
-  padding:.45rem .6rem .45rem 1rem;font-size:.82rem;box-shadow:0 4px 24px #0006;animation:fadeDown .6s ease both}
-@keyframes fadeDown{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:translateY(0)}}
-#authPill button{border:0;border-radius:99px;padding:.4rem 1.1rem;font-weight:600;font-size:.8rem;cursor:pointer;
-  background:linear-gradient(90deg,var(--acc),var(--acc2));color:#fff;transition:.2s}
-#authPill button:hover{filter:brightness(1.15);transform:translateY(-1px)}
-#authPill .who{color:var(--tx)}#authPill .who b{color:var(--acc)}
-#authPill .logout{background:none;border:1px solid var(--line);color:var(--mut)}
-#authPill .logout:hover{color:#ff8080;border-color:#ff8080}
-#authModal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;
-  background:#02040ecc;backdrop-filter:blur(6px)}
-#authModal.show{display:flex;animation:fadeDown .25s ease both}
-.authCard{width:min(360px,90vw);background:linear-gradient(180deg,#131a36,#0a0e20);border:1px solid var(--line);
-  border-radius:18px;padding:1.6rem;box-shadow:0 20px 60px #000a,0 0 0 1px #ffffff08 inset}
+/* ---------- Auth (dedicated Login page card) ---------- */
+.authCard{width:min(380px,90vw);background:linear-gradient(180deg,#10201a,#070f0a);border:1px solid var(--line);
+  border-radius:18px;padding:1.8rem;box-shadow:0 20px 60px #000a,0 0 0 1px #ffffff08 inset;position:relative;z-index:1}
 .authTabs{display:flex;gap:.4rem;margin-bottom:1.1rem;background:#ffffff0a;border-radius:99px;padding:.25rem}
 .authTabs button{flex:1;border:0;background:none;color:var(--mut);padding:.5rem;border-radius:99px;cursor:pointer;font-size:.85rem;font-weight:600;transition:.2s}
-.authTabs button.on{background:linear-gradient(90deg,var(--acc),var(--acc2));color:#fff}
+.authTabs button.on{background:linear-gradient(90deg,var(--acc),var(--acc2));color:#0a0f05}
 .authCard input{width:100%;background:#ffffff0d;border:1px solid var(--line);border-radius:10px;padding:.75rem .9rem;
   color:var(--tx);outline:none;margin-bottom:.7rem;font-size:.9rem}
 .authCard input:focus{border-color:var(--acc)}
-.authCard .go{width:100%;border:0;border-radius:10px;padding:.8rem;font-weight:700;color:#fff;cursor:pointer;
-  background:linear-gradient(90deg,var(--acc),var(--acc2));box-shadow:0 0 24px #4da3ff55;transition:.2s}
+.authCard .go{width:100%;border:0;border-radius:10px;padding:.8rem;font-weight:700;color:#0a0f05;cursor:pointer;
+  background:linear-gradient(90deg,var(--acc),var(--acc2));box-shadow:0 0 24px #baff3955;transition:.2s}
 .authCard .go:hover{filter:brightness(1.1);transform:translateY(-1px)}
 .authCard .go:disabled{opacity:.6;cursor:default;transform:none}
 .authErr{color:#ff8686;font-size:.8rem;margin:-.3rem 0 .7rem;min-height:1em}
-.authClose{float:right;background:none;border:0;color:var(--mut);font-size:1.1rem;cursor:pointer;line-height:1}
-.authClose:hover{color:var(--tx)}
-.lockNote{color:var(--mut);font-size:.8rem;display:flex;align-items:center;gap:.5rem}
-.lockNote button{margin-left:auto;flex-shrink:0}
+.lockNote{color:var(--mut);font-size:.8rem;display:flex;align-items:center;gap:.5rem;padding:2rem 4vw}
 
 /* ---------- Wow-factor motion ---------- */
 .panel{animation:riseIn .55s cubic-bezier(.2,.8,.2,1) both}
@@ -124,7 +124,38 @@ form button{border:0;border-radius:12px;padding:0 1.4rem;color:#fff;font-weight:
 @keyframes alertPulse{0%{transform:scale(.96);box-shadow:0 0 0 0 #ff505066}55%{transform:scale(1.015)}100%{transform:scale(1);box-shadow:0 0 0 14px #ff505000}}
 .th{animation:riseIn .35s ease both}
 .rel div img{transition:.25s}.rel div:hover img{transform:scale(1.06);box-shadow:0 0 16px var(--acc)}
-form button{position:relative;overflow:hidden}
+form button{position:relative}
+
+/* ---------- Click "pop" + ripple feedback (all buttons) ---------- */
+.btn,form button,.smallbtn,#chips button,.authCard .go,.authTabs button{position:relative}
+.ripple{position:absolute;border-radius:50%;pointer-events:none;z-index:5;
+  background:radial-gradient(circle,#ffffffcc 0%,#ffffff66 35%,transparent 72%);
+  transform:scale(0);animation:rippleAnim .6s ease-out forwards}
+@keyframes rippleAnim{to{transform:scale(1);opacity:0}}
+.pop-click{animation:popClick .42s cubic-bezier(.34,1.56,.64,1)}
+@keyframes popClick{0%{transform:scale(1) translateY(0)}35%{transform:scale(.87) translateY(0)}65%{transform:scale(1.22) translateY(-6px)}100%{transform:scale(1) translateY(0)}}
+
+/* ---------- Moving RGB lights beside the primary buttons ---------- */
+.btn,form button{isolation:isolate}
+.btn::before,.btn::after,form button::before,form button::after{
+  content:"";position:absolute;top:50%;width:14px;height:14px;border-radius:50%;z-index:-1;
+  animation:orbit 2.6s ease-in-out infinite,hue 3s linear infinite}
+.btn::before,form button::before{left:-4px;background:#ff5f9d;animation-delay:0s,0s}
+.btn::after,form button::after{right:-4px;background:#baff39;animation-delay:.55s,.4s}
+@keyframes orbit{0%,100%{transform:translateY(-50%) translate(0,0) scale(1)}
+  25%{transform:translateY(-50%) translate(-8px,-16px) scale(1.35)}
+  50%{transform:translateY(-50%) translate(6px,4px) scale(.85)}
+  75%{transform:translateY(-50%) translate(-6px,14px) scale(1.2)}}
+@keyframes hue{0%{filter:blur(7px) hue-rotate(0deg)}100%{filter:blur(7px) hue-rotate(360deg)}}
+@media(max-width:900px){.steps::after{display:none}}
+
+/* ---------- Auto-scrolling capability ticker ---------- */
+.marquee{overflow:hidden;white-space:nowrap;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  padding:1rem 0;background:linear-gradient(90deg,#baff3910,#5cffa310);position:relative;z-index:1}
+.marquee-track{display:inline-flex;gap:2.6rem;animation:marquee 24s linear infinite}
+.marquee:hover .marquee-track{animation-play-state:paused}
+.marquee-track span{font-size:.92rem;color:var(--mut);display:inline-flex;align-items:center;gap:.45rem}
+@keyframes marquee{to{transform:translateX(-50%)}}
 
 /* ---------- Scroll-reveal landing sections ---------- */
 .reveal{opacity:0;transform:translateY(36px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1)}
@@ -134,46 +165,204 @@ form button{position:relative;overflow:hidden}
 .lp{max-width:1200px;margin:0 auto;padding:7rem 5vw;position:relative}
 .lp-head{text-align:center;margin-bottom:3.2rem}
 .lp-head .tag{color:var(--acc);letter-spacing:.2em;font-size:.78rem;text-transform:uppercase;margin-bottom:.7rem}
-.lp-head h2{font-size:clamp(1.8rem,4vw,2.6rem);font-weight:800;margin:0}
+.lp-head h2{font-size:clamp(2.2rem,5.2vw,3.6rem);font-weight:800;margin:0;line-height:1.08;
+  background:linear-gradient(100deg,var(--tx) 20%,var(--acc) 55%,var(--acc2) 80%);-webkit-background-clip:text;background-clip:text;color:transparent}
 .lp-head p{color:var(--mut);max-width:560px;margin:.8rem auto 0;font-size:1.02rem}
 
 .feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.4rem}
 .feat{background:linear-gradient(180deg,#ffffff0d,#ffffff03);border:1px solid var(--line);border-radius:20px;
-  padding:1.8rem;transition:.35s;position:relative;overflow:hidden}
-.feat::before{content:"";position:absolute;inset:0;background:radial-gradient(160px 160px at 20% 0%,#4da3ff22,transparent);opacity:0;transition:.35s}
-.feat:hover{transform:translateY(-6px);border-color:#4da3ff55;box-shadow:0 20px 50px #0006}
+  padding:1.8rem;transition:.3s cubic-bezier(.2,.8,.2,1);position:relative;overflow:visible;cursor:pointer}
+.feat::before{content:"";position:absolute;inset:0;border-radius:20px;background:radial-gradient(160px 160px at 20% 0%,#baff3922,transparent);opacity:0;transition:.35s;z-index:0}
+.feat:hover{transform:translateY(-6px);border-color:#baff3955;box-shadow:0 20px 50px #0006}
 .feat:hover::before{opacity:1}
+.feat.active{transform:translateY(-12px) scale(1.045);border-color:var(--acc);
+  box-shadow:0 26px 60px -10px #0008,0 0 0 1px rgba(186,255,57,.5),0 0 40px -4px #baff3977}
+.feat.active::before{opacity:1}
+.feat::after{content:"";position:absolute;inset:0;border-radius:20px;padding:1.5px;pointer-events:none;z-index:1;
+  background:conic-gradient(from 0deg,transparent 0%,rgba(186,255,57,1) 6%,transparent 18%,transparent 82%,rgba(92,255,163,1) 94%,transparent 100%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
+  opacity:0;transition:opacity .35s}
+.feat.active::after,.feat.waving::after{opacity:1;animation:featSpin 2.1s linear infinite}
+@keyframes featSpin{to{transform:rotate(360deg)}}
+.feat.waving{animation:featWave .9s cubic-bezier(.36,.07,.19,.97) 1}
+@keyframes featWave{
+  0%{transform:perspective(700px) translateY(0) scale(1) rotateX(0) rotateY(0)}
+  15%{transform:perspective(700px) translateY(-15px) scale(1.06) rotateX(-9deg) rotateY(11deg)}
+  35%{transform:perspective(700px) translateY(-7px) scale(1.05) rotateX(7deg) rotateY(-10deg)}
+  55%{transform:perspective(700px) translateY(-14px) scale(1.05) rotateX(-5deg) rotateY(6deg)}
+  75%{transform:perspective(700px) translateY(-9px) scale(1.045) rotateX(2deg) rotateY(-3deg)}
+  100%{transform:perspective(700px) translateY(-12px) scale(1.045) rotateX(0) rotateY(0)}
+}
 .feat .ic{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;
-  background:linear-gradient(135deg,var(--acc),var(--acc2));margin-bottom:1.1rem;box-shadow:0 8px 24px #4da3ff44}
-.feat h3{font-size:1.08rem;margin-bottom:.5rem}
-.feat p{color:var(--mut);font-size:.9rem;line-height:1.55}
-
-.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:0;position:relative;counter-reset:stepnum}
-.steps::before{content:"";position:absolute;top:26px;left:12%;right:12%;height:2px;
-  background:linear-gradient(90deg,var(--acc),var(--acc2));opacity:.35;z-index:0}
-.step{position:relative;z-index:1;text-align:center;padding:0 .8rem}
-.step .n{counter-increment:stepnum;width:52px;height:52px;margin:0 auto 1rem;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  font-weight:800;font-size:1.15rem;background:var(--bg);border:2px solid var(--acc);color:var(--acc);box-shadow:0 0 24px #4da3ff44}
-.step h4{font-size:.98rem;margin-bottom:.4rem}
-.step p{color:var(--mut);font-size:.84rem;line-height:1.5}
+  background:linear-gradient(135deg,var(--acc),var(--acc2));margin-bottom:1.1rem;box-shadow:0 8px 24px #baff3944;transition:.3s;position:relative;z-index:1}
+.feat.active .ic{transform:scale(1.12) rotate(-6deg)}
+.feat h3{font-size:1.08rem;margin-bottom:.5rem;position:relative;z-index:1}
+.feat p{color:var(--mut);font-size:.9rem;line-height:1.55;position:relative;z-index:1}
 
 .stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;text-align:center;
-  background:linear-gradient(90deg,#4da3ff14,#8a5cff14);border:1px solid var(--line);border-radius:20px;padding:2.2rem 1rem}
+  background:linear-gradient(90deg,#baff3914,#5cffa314);border:1px solid var(--line);border-radius:20px;padding:2.2rem 1rem}
 .stat b{display:block;font-size:clamp(1.6rem,3vw,2.3rem);font-weight:800;
   background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;color:transparent}
 .stat span{color:var(--mut);font-size:.8rem}
 
-@media(max-width:900px){.feat-grid{grid-template-columns:1fr}.steps{grid-template-columns:1fr 1fr;row-gap:2rem}.steps::before{display:none}.stats-bar{grid-template-columns:1fr 1fr;gap:1.6rem}}
+@media(max-width:900px){.feat-grid{grid-template-columns:1fr}.stats-bar{grid-template-columns:1fr 1fr;gap:1.6rem}}
+/* ---------- Draggable step-card carousel (enlarged; now carries its own description) ---------- */
+.mc-wrap{margin-top:1rem;overflow:hidden}
+.mc-track{display:flex;gap:1.2rem;width:max-content;cursor:grab;will-change:transform}
+.mc-track.dragging{cursor:grabbing}
+.mcard{--c:140,255,120;position:relative;width:250px;flex:0 0 auto;padding:1.7rem 1.5rem;border-radius:18px;text-align:center;
+  background:linear-gradient(180deg,#ffffff0d,#ffffff03);border:1.5px solid rgba(var(--c),.55);
+  box-shadow:0 0 24px rgba(var(--c),.16);transition:.3s cubic-bezier(.2,.8,.2,1);user-select:none}
+.mcard:hover{transform:translateY(-6px) scale(1.05);box-shadow:0 0 34px rgba(var(--c),.5);border-color:rgba(var(--c),.9)}
+.mc-tag{display:block;font-size:.7rem;letter-spacing:.15em;color:rgba(var(--c),.9);margin-bottom:.7rem}
+.mc-ic{font-size:1.8rem;margin-bottom:.4rem}
+.mc-num{font-size:2.3rem;font-weight:800;background:linear-gradient(90deg,rgba(var(--c),1),var(--acc2));
+  -webkit-background-clip:text;color:transparent;line-height:1}
+.mcard h5{font-size:1.05rem;margin-top:.6rem;color:var(--tx);font-weight:700}
+.mcard p{font-size:.85rem;line-height:1.5;color:var(--mut);margin-top:.6rem}
+.mc-hint{text-align:center;color:var(--mut);font-size:.75rem;margin-top:1.1rem;letter-spacing:.05em}
+@media(max-width:900px){.mcard{width:210px;padding:1.4rem 1.1rem}}
+
+/* ==================== Multi-page shell + sidebar ==================== */
+#sidebar{position:fixed;left:0;top:0;bottom:0;width:230px;z-index:60;display:flex;flex-direction:column;
+  background:rgba(6,8,4,.72);backdrop-filter:blur(18px);border-right:1px solid var(--line);padding:1.5rem 1.1rem}
+#sidebar.hide{display:none}
+.brand{color:var(--tx);font-weight:800;text-decoration:none;font-size:1.08rem;display:block;margin-bottom:2.2rem;letter-spacing:.02em}
+.brand span{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sidenav{display:flex;flex-direction:column;gap:.35rem;flex:1}
+.sidenav a{display:flex;align-items:center;gap:.8rem;padding:.75rem .9rem;border-radius:12px;color:var(--mut);
+  text-decoration:none;font-size:.92rem;font-weight:600;transition:.2s;position:relative}
+.sidenav a .ico{font-size:1.05rem}
+.sidenav a:hover{background:#ffffff0d;color:var(--tx)}
+.sidenav a.on{background:linear-gradient(90deg,#baff3922,#5cffa322);color:var(--tx);
+  box-shadow:0 0 24px -8px rgba(186,255,57,.5) inset}
+.sidenav a.on::before{content:"";position:absolute;left:-1.1rem;top:22%;bottom:22%;width:3px;border-radius:3px;
+  background:linear-gradient(180deg,var(--acc),var(--acc2));box-shadow:0 0 10px var(--acc)}
+.sidebar-bottom{border-top:1px solid var(--line);padding-top:1rem;font-size:.82rem}
+.sidebar-bottom .who{color:var(--tx);margin-bottom:.6rem;word-break:break-all;line-height:1.4}
+.sidebar-bottom .who b{color:var(--acc)}
+.sidebar-bottom .logout{width:100%;background:none;border:1px solid var(--line);color:var(--mut);border-radius:8px;
+  padding:.5rem;cursor:pointer;font-size:.8rem;transition:.2s}
+.sidebar-bottom .logout:hover{color:#ff8080;border-color:#ff8080}
+.sidebar-bottom .loginlink{display:block;text-align:center;color:#0a0f05;text-decoration:none;font-weight:700;font-size:.85rem;
+  background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:10px;padding:.6rem;box-shadow:0 0 20px #baff3955}
+
+.pages{margin-left:230px}
+.pages.full{margin-left:0}
+.page{display:none}
+.page.active{display:block;animation:pageIn .55s cubic-bezier(.2,.8,.2,1) both}
+@keyframes pageIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+.page-head{max-width:1400px;margin:0 auto 1rem;padding:3.2rem 4vw 0}
+.page-head h2{font-size:clamp(1.6rem,3vw,2.1rem);font-weight:800;
+  background:linear-gradient(100deg,var(--tx) 20%,var(--acc) 60%,var(--acc2) 90%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.page-head p{color:var(--mut);margin-top:.5rem;max-width:640px}
+
+#page-login{min-height:100vh;display:flex;align-items:center;justify-content:center;position:relative}
+.login-hint{text-align:center;color:var(--mut);font-size:.72rem;margin-top:1.1rem;letter-spacing:.02em}
+
+.wl-grid{max-width:1400px;margin:1.4rem auto 5rem;padding:0 4vw;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.1rem}
+.wl-item{background:linear-gradient(180deg,#ffffff0d,#ffffff03)}
+.wl-toolbar{max-width:1400px;margin:0 auto;padding:0 4vw}
+.hist-wrap{max-width:1000px;margin:1.4rem auto 5rem;padding:0 4vw;display:flex;flex-direction:column;gap:.7rem}
+.hist-wrap .hrow{padding:.9rem 1.1rem;font-size:.88rem}
+
+.analyst-wrap{padding:2.4rem 4vw 5rem}
+
+@media(max-width:900px){
+  #sidebar{width:100%;height:auto;position:fixed;bottom:0;top:auto;flex-direction:row;align-items:center;
+    padding:.6rem .8rem;border-right:0;border-top:1px solid var(--line);z-index:70}
+  .brand,.sidebar-bottom{display:none}
+  .sidenav{flex-direction:row;justify-content:space-around;flex:1}
+  .sidenav a{flex-direction:column;gap:.2rem;font-size:.62rem;padding:.4rem}
+  .pages{margin-left:0;padding-bottom:70px}
+  #page-login{padding:0 4vw}
+}
+
+/* ==================== Per-page accent theming (each page gets its own colour identity) ==================== */
+html[data-page="analyst"]{--acc:#4da3ff;--acc2:#8a5cff}
+html[data-page="watchlist"]{--acc:#ff5f6d;--acc2:#ffb648}
+html[data-page="history"]{--acc:#b083ff;--acc2:#ff7ad9}
+html[data-page="map"]{--acc:#22d3ee;--acc2:#3b82f6}
+html[data-page="dashboard"]{--acc:#ffd23f;--acc2:#ff9f43}
+html:not([data-page]),html[data-page="home"],html[data-page="login"]{--acc:#baff39;--acc2:#5cffa3}
+
+/* ==================== Map Explorer page ==================== */
+.map-wrap{display:grid;grid-template-columns:1fr 320px;gap:1.1rem;max-width:1500px;margin:1.2rem auto 5rem;padding:0 4vw;align-items:start}
+#leafletMap{height:70vh;min-height:420px;border-radius:18px;border:1px solid var(--line);overflow:hidden;
+  box-shadow:0 0 40px -10px rgba(34,211,238,.35)}
+.map-side{background:linear-gradient(180deg,#ffffff0d,#ffffff03);border:1px solid var(--line);border-radius:18px;padding:1.3rem;
+  display:flex;flex-direction:column;gap:.8rem;position:sticky;top:1.5rem}
+.map-side h3{font-size:1rem;margin:0}
+.map-side .coords{font-family:ui-monospace,monospace;font-size:.82rem;color:var(--mut);background:#ffffff0a;border-radius:10px;padding:.6rem .8rem}
+.map-side .place{color:var(--tx);font-size:.9rem;font-weight:600;min-height:1.3em}
+.map-side .osmcredit{font-size:.65rem;color:var(--mut);opacity:.7}
+.map-side select{width:100%;background:#ffffff0d;border:1px solid var(--line);border-radius:10px;padding:.55rem .7rem;color:var(--tx);font-size:.85rem}
+.map-side img.preview{width:100%;border-radius:12px;border:1px solid var(--line);display:none}
+.map-side .go2{width:100%;border:0;border-radius:10px;padding:.7rem;font-weight:700;color:#0a0f05;cursor:pointer;
+  background:linear-gradient(90deg,var(--acc),var(--acc2));box-shadow:0 0 20px -4px var(--acc);transition:.2s;font-size:.85rem}
+.map-side .go2:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.map-side .go2:disabled{opacity:.5;cursor:default;transform:none}
+.map-side .go2.ghost{background:none;border:1px solid var(--line);box-shadow:none;color:var(--tx)}
+.map-hint{color:var(--mut);font-size:.78rem;line-height:1.5}
+@media(max-width:900px){.map-wrap{grid-template-columns:1fr}#leafletMap{height:50vh}}
+
+/* ==================== Dashboard page ==================== */
+.dash-grid{max-width:1400px;margin:1.4rem auto 5rem;padding:0 4vw;display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
+.dash-card{background:linear-gradient(180deg,#ffffff0d,#ffffff03);border:1px solid var(--line);border-radius:18px;padding:1.4rem}
+.dash-card b{display:block;font-size:1.9rem;font-weight:800;background:linear-gradient(90deg,var(--acc),var(--acc2));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.dash-card span{color:var(--mut);font-size:.8rem}
+.dash-wide{grid-column:1/-1;background:linear-gradient(180deg,#ffffff0d,#ffffff03);border:1px solid var(--line);border-radius:18px;padding:1.4rem}
+.dash-wide h3{margin:0 0 1rem;font-size:1rem}
+.bars{display:flex;align-items:flex-end;gap:.5rem;height:120px}
+.bars .bar{flex:1;background:linear-gradient(180deg,var(--acc),var(--acc2));border-radius:6px 6px 0 0;min-height:4px;position:relative}
+.bars .bar span{position:absolute;bottom:-1.4rem;left:0;right:0;text-align:center;font-size:.65rem;color:var(--mut)}
+@media(max-width:900px){.dash-grid{grid-template-columns:1fr 1fr}}
+
+/* ==================== Voice input ==================== */
+.mic-btn{border:1px solid var(--line);background:#ffffff0d;color:var(--tx);border-radius:12px;width:44px;padding:0!important;cursor:pointer;
+  font-size:1.05rem;transition:.2s;flex-shrink:0}
+.mic-btn:hover{border-color:var(--acc)}
+.mic-btn.on{background:linear-gradient(90deg,var(--acc),var(--acc2));animation:micPulse 1.1s ease-in-out infinite}
+@keyframes micPulse{0%,100%{box-shadow:0 0 0 0 var(--acc)}50%{box-shadow:0 0 0 8px transparent}}
+
+/* ==================== Command palette (Ctrl/Cmd+K) ==================== */
+#cmdk{position:fixed;inset:0;z-index:120;display:none;align-items:flex-start;justify-content:center;padding-top:14vh;
+  background:#02040ecc;backdrop-filter:blur(6px)}
+#cmdk.show{display:flex}
+.cmdk-box{width:min(520px,90vw);background:linear-gradient(180deg,#10201a,#070f0a);border:1px solid var(--line);border-radius:16px;
+  box-shadow:0 20px 60px #000a;overflow:hidden}
+.cmdk-box input{width:100%;background:none;border:0;border-bottom:1px solid var(--line);padding:1rem 1.1rem;color:var(--tx);
+  font-size:1rem;outline:none}
+.cmdk-list{max-height:320px;overflow-y:auto;padding:.5rem}
+.cmdk-item{display:flex;align-items:center;gap:.7rem;padding:.7rem .8rem;border-radius:10px;cursor:pointer;color:var(--mut);font-size:.88rem}
+.cmdk-item:hover,.cmdk-item.sel{background:#ffffff0d;color:var(--tx)}
+.cmdk-hint{color:var(--mut);font-size:.68rem;padding:.6rem 1rem;border-top:1px solid var(--line)}
 </style>
 </head>
 <body>
 <div id="ambientDots"></div>
 <canvas id="ambientGlow"></canvas>
-<div id="authPill"></div>
+<canvas id="globalTendrils"></canvas>
+<nav id="sidebar">
+  <a href="#/home" class="brand">🛰️ SatQuery<span>AI</span></a>
+  <div class="sidenav">
+    <a href="#/home" data-route="home"><span class="ico">🏠</span><span>Home</span></a>
+    <a href="#/analyst" data-route="analyst"><span class="ico">🔭</span><span>Analyst</span></a>
+    <a href="#/map" data-route="map"><span class="ico">🗺️</span><span>Map Explorer</span></a>
+    <a href="#/watchlist" data-route="watchlist"><span class="ico">🚨</span><span>Watchlist</span></a>
+    <a href="#/history" data-route="history"><span class="ico">🕒</span><span>History</span></a>
+    <a href="#/dashboard" data-route="dashboard"><span class="ico">📊</span><span>Dashboard</span></a>
+  </div>
+  <div style="color:var(--mut);font-size:.68rem;padding:.5rem .9rem;opacity:.7">⌘/Ctrl + K — quick search</div>
+  <div class="sidebar-bottom" id="sidebarUser"></div>
+</nav>
 
-<div id="authModal">
+<div class="pages" id="pages">
+
+<div class="page" id="page-login">
   <div class="authCard">
-    <button class="authClose" type="button" id="authClose">✕</button>
     <div class="authTabs">
       <button type="button" id="tabLogin" class="on">Log In</button>
       <button type="button" id="tabSignup">Sign Up</button>
@@ -182,19 +371,30 @@ form button{position:relative;overflow:hidden}
     <input id="authEmail" type="email" placeholder="you@example.com" autocomplete="username">
     <input id="authPass" type="password" placeholder="Password" autocomplete="current-password">
     <button class="go" id="authGo" type="button">Log In</button>
+    <p class="login-hint">SatQuery AI · SIH26167 · Team Neural Minds</p>
   </div>
 </div>
 
+<div class="page active" id="page-home">
 <section id="hero">
-  <div id="bg"><canvas id="stars"></canvas><canvas id="globeCanvas"></canvas></div>
+  <div id="bg"><div class="stars"></div><canvas id="stars"></canvas><canvas id="cloudsCanvas"></canvas><canvas id="petalsCanvas"></canvas><canvas id="tendrilsCanvas"></canvas><canvas id="moonCanvas"></canvas><canvas id="grassCanvas"></canvas></div>
   <div id="sat"><canvas id="satCanvas"></canvas></div>
   <div class="overlay">
     <p class="tag">SIH26167 · Space Technology</p>
-    <h1>SatQuery<span> AI</span></h1>
+    <h1 data-text="SatQuery AI">SatQuery<span> AI</span></h1>
     <p class="sub">Upload satellite imagery. Ask in plain language. Get answers grounded in what the images actually show.</p>
-    <a class="btn" href="#app">Launch Analyst →</a>
+    <a class="btn" href="#/analyst">Launch Analyst →</a>
   </div>
 </section>
+
+<div class="marquee"><div class="marquee-track">
+  <span>🛰️ Land Use</span><span>🌊 Water Bodies</span><span>🌳 Vegetation</span><span>🏙️ Urban Growth</span>
+  <span>🚨 Damage Assessment</span><span>📊 Change Detection</span><span>🔥 Burn Scars</span><span>🌾 Agriculture</span>
+  <span>🛣️ Roads &amp; Infrastructure</span><span>✈️ Airports</span><span>📡 Live Watchlists</span><span>📥 PDF Reports</span>
+  <span>🛰️ Land Use</span><span>🌊 Water Bodies</span><span>🌳 Vegetation</span><span>🏙️ Urban Growth</span>
+  <span>🚨 Damage Assessment</span><span>📊 Change Detection</span><span>🔥 Burn Scars</span><span>🌾 Agriculture</span>
+  <span>🛣️ Roads &amp; Infrastructure</span><span>✈️ Airports</span><span>📡 Live Watchlists</span><span>📥 PDF Reports</span>
+</div></div>
 
 <section class="lp">
   <div class="lp-head reveal">
@@ -214,11 +414,18 @@ form button{position:relative;overflow:hidden}
     <p class="tag">How it works</p>
     <h2>From imagery to insight in four steps</h2>
   </div>
-  <div class="steps">
-    <div class="step reveal d1"><div class="n">1</div><h4>Upload Imagery</h4><p>Up to 16 satellite images — a single scene, or oldest → newest for change tracking.</p></div>
-    <div class="step reveal d2"><div class="n">2</div><h4>Ask in Plain Language</h4><p>Hindi or English — describe, compare, measure, locate, or count.</p></div>
-    <div class="step reveal d3"><div class="n">3</div><h4>Router + CV + VLM Reason Together</h4><p>Intent detection, land-cover analytics and Gemini reasoning combine on the evidence.</p></div>
-    <div class="step reveal d4"><div class="n">4</div><h4>Grounded Answer + Alerts</h4><p>Get a confidence-scored answer, a downloadable report, and ongoing watchlist monitoring.</p></div>
+  <div class="mc-wrap reveal">
+    <div class="mc-track" id="mcTrack">
+      <div class="mcard" style="--c:140,255,120"><span class="mc-tag">STEP 01</span><div class="mc-ic">📤</div><div class="mc-num">01</div><h5>Upload Imagery</h5><p>Up to 16 satellite images — a single scene, or oldest → newest for change tracking.</p></div>
+      <div class="mcard" style="--c:92,255,163"><span class="mc-tag">STEP 02</span><div class="mc-ic">💬</div><div class="mc-num">02</div><h5>Ask in Plain Language</h5><p>Hindi or English — describe, compare, measure, locate, or count.</p></div>
+      <div class="mcard" style="--c:93,255,176"><span class="mc-tag">STEP 03</span><div class="mc-ic">🧠</div><div class="mc-num">03</div><h5>Router + CV + VLM</h5><p>Intent detection, land-cover analytics and Gemini reasoning combine on the evidence.</p></div>
+      <div class="mcard" style="--c:255,95,157"><span class="mc-tag">STEP 04</span><div class="mc-ic">✅</div><div class="mc-num">04</div><h5>Grounded Answer</h5><p>A confidence-scored answer, a downloadable report, and ongoing watchlist monitoring.</p></div>
+      <div class="mcard" style="--c:140,255,120"><span class="mc-tag">STEP 01</span><div class="mc-ic">📤</div><div class="mc-num">01</div><h5>Upload Imagery</h5><p>Up to 16 satellite images — a single scene, or oldest → newest for change tracking.</p></div>
+      <div class="mcard" style="--c:92,255,163"><span class="mc-tag">STEP 02</span><div class="mc-ic">💬</div><div class="mc-num">02</div><h5>Ask in Plain Language</h5><p>Hindi or English — describe, compare, measure, locate, or count.</p></div>
+      <div class="mcard" style="--c:93,255,176"><span class="mc-tag">STEP 03</span><div class="mc-ic">🧠</div><div class="mc-num">03</div><h5>Router + CV + VLM</h5><p>Intent detection, land-cover analytics and Gemini reasoning combine on the evidence.</p></div>
+      <div class="mcard" style="--c:255,95,157"><span class="mc-tag">STEP 04</span><div class="mc-ic">✅</div><div class="mc-num">04</div><h5>Grounded Answer</h5><p>A confidence-scored answer, a downloadable report, and ongoing watchlist monitoring.</p></div>
+    </div>
+    <p class="mc-hint">← drag to explore →</p>
   </div>
 </section>
 
@@ -231,41 +438,99 @@ form button{position:relative;overflow:hidden}
   </div>
 </section>
 
-<main id="app">
-  <div class="side">
-    <div class="panel">
-      <h2>🛰️ Imagery <span id="count" style="color:var(--mut)">(0/16)</span></h2>
-      <div id="drop">Drop up to 16 satellite images here or click to browse</div>
-      <input id="file" type="file" accept="image/*" multiple hidden>
-      <div id="grid"></div>
+</div><!-- /page-home -->
+
+<div class="page" id="page-analyst">
+  <div class="page-head"><h2>🔭 Analyst</h2><p>Upload imagery, then ask anything — land use, water, vegetation, urban growth, damage, or comparisons between dates.</p></div>
+  <main id="app" class="analyst-wrap">
+    <div class="side">
+      <div class="panel">
+        <h2>🛰️ Imagery <span id="count" style="color:var(--mut)">(0/16)</span></h2>
+        <div id="drop">Drop up to 16 satellite images here or click to browse</div>
+        <input id="file" type="file" accept="image/*" multiple hidden>
+        <div id="grid"></div>
+      </div>
     </div>
-    <div class="panel">
-      <h2>🕒 History</h2>
-      <div class="mini" id="histList" style="margin-top:.4rem;color:var(--mut);font-size:.8rem">No past analyses yet — ask something!</div>
+    <div class="panel" id="chat">
+      <h2>💬 Ask SatQuery</h2>
+      <div id="msgs"><div class="m a">Upload your images (for change detection, upload <b>oldest → newest</b>), then ask anything: land use, water, vegetation, urban growth, damage, or comparisons between images.</div></div>
+      <div id="chips"></div>
+      <form id="f"><button type="button" class="mic-btn" id="micBtn" title="Voice input">🎤</button><input id="q" type="text" placeholder="e.g. Which images contain water bodies?" autocomplete="off"><button>Send</button></form>
     </div>
-    <div class="panel">
-      <h2>🚨 Watchlist <span style="color:var(--mut);font-weight:400;font-size:.75rem">(auto-alert on new imagery)</span></h2>
-      <button type="button" class="smallbtn" id="saveWL" style="margin-top:.4rem">+ Save Image 1 as Watchlist baseline</button>
-      <input id="wlCheckFile" type="file" accept="image/*" hidden>
-      <div id="wlList" style="margin-top:.6rem;color:var(--mut);font-size:.8rem">No watchlist areas saved yet.</div>
+  </main>
+</div>
+
+<div class="page" id="page-watchlist">
+  <div class="page-head"><h2>🚨 Watchlist</h2><p>Save a baseline image for any area. Every future check compares against it automatically — with an instant alert if something changed.</p></div>
+  <div class="wl-toolbar">
+    <input id="wlBaselineFile" type="file" accept="image/*" hidden>
+    <button type="button" class="smallbtn" id="saveWL" style="padding:.6rem 1.1rem;font-size:.85rem">+ New Watchlist (upload a baseline image)</button>
+    <input id="wlCheckFile" type="file" accept="image/*" hidden>
+  </div>
+  <div id="wlList" class="wl-grid">Loading…</div>
+</div>
+
+<div class="page" id="page-history">
+  <div class="page-head"><h2>🕒 History</h2><p>Every analysis you've run, saved automatically — revisit any answer or download it as a PDF report.</p></div>
+  <div id="histList" class="hist-wrap">Loading…</div>
+</div>
+
+<div class="page" id="page-map">
+  <div class="page-head"><h2>🗺️ Map Explorer</h2><p>Click anywhere on Earth to pull real satellite imagery of that exact spot — then send it straight to the Analyst or save it as a Watchlist baseline. No screenshots, no Google Earth needed.</p></div>
+  <div class="map-wrap">
+    <div id="leafletMap"></div>
+    <div class="map-side">
+      <h3>📍 Selected location</h3>
+      <div class="coords" id="mapCoords">Click on the map to drop a pin…</div>
+      <div class="place" id="mapPlace"></div>
+      <div class="osmcredit">Basemap: Esri World Imagery · Place lookup: OpenStreetMap Nominatim</div>
+      <div>
+        <label style="font-size:.78rem;color:var(--mut)">Capture radius</label>
+        <select id="mapZoomSel">
+          <option value="0.004">Close (~800 m)</option>
+          <option value="0.015" selected>Medium (~3 km)</option>
+          <option value="0.05">Wide (~10 km)</option>
+        </select>
+      </div>
+      <button type="button" class="go2" id="mapFetchBtn" disabled>📡 Fetch satellite image here</button>
+      <img class="preview" id="mapPreview">
+      <button type="button" class="go2" id="mapUseBtn" disabled>➕ Use in Analyst</button>
+      <button type="button" class="go2 ghost" id="mapWlBtn" disabled>🚨 Save as Watchlist baseline</button>
+      <p class="map-hint">Tip: search any place first using the map's built-in zoom/pan, or just click roughly where you want — you can always fetch a wider or closer capture afterwards.</p>
     </div>
   </div>
-  <div class="panel" id="chat">
-    <h2>💬 Ask SatQuery</h2>
-    <div id="msgs"><div class="m a">Upload your images (for change detection, upload <b>oldest → newest</b>), then ask anything: land use, water, vegetation, urban growth, damage, or comparisons between images.</div></div>
-    <div id="chips"></div>
-    <form id="f"><input id="q" type="text" placeholder="e.g. Which images contain water bodies?" autocomplete="off"><button>Send</button></form>
+</div>
+
+<div class="page" id="page-dashboard">
+  <div class="page-head"><h2>📊 Dashboard</h2><p>A portfolio-level view across everything you've monitored and asked — not just a single answer.</p></div>
+  <div class="dash-grid" id="dashGrid">
+    <div class="dash-card"><b id="dQueries">0</b><span>Total analyses run</span></div>
+    <div class="dash-card"><b id="dAreas">0</b><span>Areas being watched</span></div>
+    <div class="dash-card"><b id="dAlerts">0</b><span>Active change alerts</span></div>
+    <div class="dash-card"><b id="dAvg">0%</b><span>Avg. change across watchlist</span></div>
+    <div class="dash-wide">
+      <h3>Change % by watchlist area</h3>
+      <div class="bars" id="dashBars"><span style="color:var(--mut);font-size:.85rem">No watchlist data yet — save an area to see it here.</span></div>
+    </div>
   </div>
-</main>
+</div>
+
+</div><!-- /pages -->
+
+<div id="cmdk">
+  <div class="cmdk-box">
+    <input id="cmdkInput" placeholder="Type a command or search…" autocomplete="off">
+    <div class="cmdk-list" id="cmdkList"></div>
+    <div class="cmdk-hint">↑↓ to navigate · Enter to go · Esc to close</div>
+  </div>
+</div>
 
 <script>
 const $ = id => document.getElementById(id);
 
-// ---------------- Hero centerpiece: rotating wireframe globe + radar sweep + "change detected" blips ----------------
-// Fully custom canvas (no external scene/CDN) so it never fails to load, and it visually echoes what
-// SatQuery actually does: scan imagery, sweep for change, flag it.
+// ---------------- Hero centerpiece: drifting glowing butterflies over the dot field ----------------
 (function () {
-  const c = document.getElementById("globeCanvas"); if (!c) return;
+  const c = document.getElementById("petalsCanvas"); if (!c) return;
   const gx = c.getContext("2d"), R = Math.min(window.devicePixelRatio || 1, 2);
   let W, H;
   const size = () => { W = c.width = c.offsetWidth * R; H = c.height = c.offsetHeight * R; };
@@ -277,64 +542,275 @@ const $ = id => document.getElementById(id);
     new IntersectionObserver(es => { heroVisible = es[0].isIntersecting; }, { threshold: 0 }).observe(heroEl);
   }
 
-  let blips = [];
-  (function spawnBlip() {
-    blips.push({ lat: (Math.random() - .5) * 1.5, lon: Math.random() * 6.283, born: 0 });
-    setTimeout(spawnBlip, 2600 + Math.random() * 2600);
-  })();
+  const PALETTE = ["190,255,140", "92,255,163", "160,200,255", "180,150,255"]; // blue/purple, matches --acc/--acc2
+  const flowers = Array.from({ length: 14 }, () => ({
+    x: Math.random(), y: Math.random(),
+    len: Math.random() * 8 + 9, wid: Math.random() * 5 + 6,
+    rot: Math.random() * 6.283, spin: (Math.random() - .5) * .12,
+    rise: Math.random() * .012 + .006, sway: Math.random() * .4 + .15, swayPh: Math.random() * 6.283,
+    flapSpeed: Math.random() * 2.2 + 3.2, flapPh: Math.random() * 6.283,
+    color: PALETTE[Math.floor(Math.random() * PALETTE.length)],
+    alphaPh: Math.random() * 6.283
+  }));
+
+  // Draws a butterfly: two pairs of wings that flap open/close via a horizontal squash,
+  // plus a small body down the centre line.
+  function butterfly(cx, cy, wid, len, angle, flap) {
+    gx.save(); gx.translate(cx, cy); gx.rotate(angle);
+    const open = 0.35 + Math.abs(Math.sin(flap)) * 0.75; // 0=folded closed, 1=fully open
+    [1, -1].forEach(side => {
+      gx.save(); gx.scale(side * open, 1);
+      gx.beginPath(); gx.ellipse(wid * 1.05, -len * 0.42, wid, len * 0.62, -0.25, 0, 6.283); gx.fill();
+      gx.beginPath(); gx.ellipse(wid * 0.85, len * 0.28, wid * 0.7, len * 0.46, 0.2, 0, 6.283); gx.fill();
+      gx.restore();
+    });
+    gx.restore();
+  }
 
   (function draw(ts) {
     requestAnimationFrame(draw);
     if (!c.isConnected || !heroVisible) return;
     ts = ts || 0; const t = ts / 1000;
     gx.clearRect(0, 0, W, H);
-    const cx = W * .46, cy = H * .5, rad = Math.min(W, H) * .26;
-    const spin = t * .18, sweep = (t * .5) % 6.283;
-
-    gx.save(); gx.translate(cx, cy);
-    // globe outline
-    gx.strokeStyle = "rgba(120,163,255,.4)"; gx.lineWidth = 1.1 * R;
-    gx.beginPath(); gx.arc(0, 0, rad, 0, 6.283); gx.stroke();
-    // longitude meridians (spinning)
-    for (let i = 0; i < 6; i++) {
-      const phi = spin + i * Math.PI / 6;
-      gx.beginPath(); gx.ellipse(0, 0, Math.abs(rad * Math.cos(phi)), rad, 0, 0, 6.283);
-      gx.strokeStyle = `rgba(120,163,255,${.14 + .1 * Math.abs(Math.cos(phi))})`; gx.stroke();
-    }
-    // latitude parallels
-    for (let i = -2; i <= 2; i++) {
-      if (!i) continue;
-      const theta = i * .55, ry = rad * Math.cos(theta);
-      gx.beginPath(); gx.ellipse(0, rad * Math.sin(theta), ry, ry * .28, 0, 0, 6.283);
-      gx.strokeStyle = "rgba(120,163,255,.22)"; gx.stroke();
-    }
-    // radar sweep wedge
-    const steps = 30, span = .95;
-    for (let i = 0; i < steps; i++) {
-      const a = sweep - (i / steps) * span;
-      gx.beginPath(); gx.moveTo(0, 0); gx.arc(0, 0, rad, a, a - span / steps); gx.closePath();
-      gx.fillStyle = `rgba(138,92,255,${(1 - i / steps) * .16})`; gx.fill();
-    }
-    gx.strokeStyle = "rgba(180,150,255,.55)"; gx.lineWidth = 1.4 * R;
-    gx.beginPath(); gx.moveTo(0, 0); gx.lineTo(Math.cos(sweep) * rad, Math.sin(sweep) * rad); gx.stroke();
-    // "change detected" blips on the near side of the globe
-    blips.forEach(b => { if (!b.born) b.born = t; });
-    blips = blips.filter(b => t - b.born < 2.4);
-    blips.forEach(b => {
-      const lon = b.lon + spin, z = Math.cos(b.lat) * Math.cos(lon);
-      if (z < .1) return;
-      const bx = rad * Math.cos(b.lat) * Math.sin(lon), by = rad * Math.sin(b.lat);
-      const age = (t - b.born) / 2.4, ring = age * 14 * R;
-      gx.beginPath(); gx.arc(bx, by, 2.4 * R + ring, 0, 6.283);
-      gx.strokeStyle = `rgba(255,110,90,${(1 - age) * .8})`; gx.lineWidth = 1.6 * R; gx.stroke();
-      gx.beginPath(); gx.arc(bx, by, 2.2 * R, 0, 6.283);
-      gx.fillStyle = `rgba(255,160,90,${1 - age})`; gx.fill();
+    flowers.forEach(f => {
+      f.y -= f.rise * .01;
+      if (f.y < -.05) { f.y = 1.05; f.x = Math.random(); }
+      f.rot += f.spin * .01;
+      const px = (f.x + Math.sin(t * f.sway + f.swayPh) * .045) * W;
+      const py = (f.y + Math.sin(t * f.sway * 1.7 + f.swayPh) * .006) * H;
+      const a = .4 + .25 * Math.sin(t * .8 + f.alphaPh);
+      const flapAngle = t * f.flapSpeed + f.flapPh;
+      const heading = f.rot + Math.sin(t * f.sway + f.swayPh) * .5; // faces its drift direction
+      gx.fillStyle = `rgba(${f.color},${a})`;
+      gx.shadowColor = `rgba(${f.color},.9)`; gx.shadowBlur = 8 * R;
+      butterfly(px, py, f.wid * R, f.len * R, heading, flapAngle);
+      gx.shadowBlur = 0;
     });
-    gx.restore();
   })();
 })();
 
-// ---------------- Orbiting satellite scanning over the hero's right side ----------------
+// ---------------- Slow drifting nebula clouds behind the stars ----------------
+(function () {
+  const c = document.getElementById("cloudsCanvas"); if (!c) return;
+  const gx = c.getContext("2d"), R = Math.min(window.devicePixelRatio || 1, 2);
+  let W, H;
+  const size = () => { W = c.width = c.offsetWidth * R; H = c.height = c.offsetHeight * R; };
+  size(); addEventListener("resize", size);
+
+  let heroVisible = true;
+  const heroEl = document.getElementById("hero");
+  if (heroEl && "IntersectionObserver" in window) {
+    new IntersectionObserver(es => { heroVisible = es[0].isIntersecting; }, { threshold: 0 }).observe(heroEl);
+  }
+
+  const CLOUD_PALETTE = ["190,255,140", "92,255,163", "110,220,210"];
+  const clouds = Array.from({ length: 5 }, (_, i) => ({
+    x: Math.random(), y: Math.random() * .55 + .03,
+    rx: Math.random() * .16 + .14, ry: Math.random() * .07 + .05,
+    speed: (Math.random() * .006 + .003) * (Math.random() < .5 ? 1 : -1),
+    color: CLOUD_PALETTE[i % CLOUD_PALETTE.length], alpha: Math.random() * .08 + .06
+  }));
+
+  (function draw() {
+    requestAnimationFrame(draw);
+    if (!c.isConnected || !heroVisible) return;
+    gx.clearRect(0, 0, W, H);
+    clouds.forEach(cl => {
+      cl.x += cl.speed * .01;
+      if (cl.x < -cl.rx * 1.5) cl.x = 1 + cl.rx * 1.5;
+      if (cl.x > 1 + cl.rx * 1.5) cl.x = -cl.rx * 1.5;
+      const cx = cl.x * W, cy = cl.y * H, rx = cl.rx * W, ry = cl.ry * H;
+      const grad = gx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry));
+      grad.addColorStop(0, `rgba(${cl.color},${cl.alpha})`);
+      grad.addColorStop(1, `rgba(${cl.color},0)`);
+      gx.fillStyle = grad;
+      gx.beginPath(); gx.ellipse(cx, cy, rx, ry, 0, 0, 6.283); gx.fill();
+    });
+  })();
+})();
+
+// ---------------- Swaying glow-grass along the bottom edge of the hero ----------------
+(function () {
+  const c = document.getElementById("grassCanvas"); if (!c) return;
+  const gx = c.getContext("2d"), R = Math.min(window.devicePixelRatio || 1, 2);
+  let W, H;
+  const size = () => { W = c.width = c.offsetWidth * R; H = c.height = c.offsetHeight * R; };
+  size(); addEventListener("resize", size);
+
+  let heroVisible = true;
+  const heroEl = document.getElementById("hero");
+  if (heroEl && "IntersectionObserver" in window) {
+    new IntersectionObserver(es => { heroVisible = es[0].isIntersecting; }, { threshold: 0 }).observe(heroEl);
+  }
+
+  // always a gentle idle sway; a stronger sway + brighter glow kicks in wherever the cursor is nearby
+  let mouseCX = -9999, mouseCY = -9999;
+  addEventListener("mousemove", e => { mouseCX = e.clientX; mouseCY = e.clientY; }, { passive: true });
+  addEventListener("mouseleave", () => { mouseCX = mouseCY = -9999; }, { passive: true });
+
+  let blades = [];
+  function makeBlades() {
+    const n = Math.max(40, Math.floor(W / (10 * R)));
+    blades = Array.from({ length: n }, (_, i) => ({
+      x: (i + Math.random() * .6) / n,
+      h: Math.random() * .11 + .09, tilt: (Math.random() - .5) * .3,
+      ph: Math.random() * 6.283, speed: Math.random() * .5 + .5,
+      leaf: Math.random() < .35, color: "186,255,57"
+    }));
+  }
+  makeBlades(); addEventListener("resize", makeBlades);
+
+  (function draw(ts) {
+    requestAnimationFrame(draw);
+    if (!c.isConnected || !heroVisible) return;
+    ts = ts || 0; const t = ts / 1000;
+    gx.clearRect(0, 0, W, H);
+    const rect = c.getBoundingClientRect();
+    const mcx = (mouseCX - rect.left) * R, mcy = (mouseCY - rect.top) * R;
+    blades.forEach(b => {
+      const bx = b.x * W, baseY = H, bladeH = b.h * H;
+      const near = Math.max(0, 1 - Math.hypot(bx - mcx, baseY - mcy) / (240 * R)); // 0 = far, 1 = right at the cursor
+      const a = .38 + near * .62;
+      const idleWind = Math.sin(t * b.speed + b.ph) * .28 + b.tilt;
+      const wind = idleWind + near * 1.5;
+      const tipX = bx + wind * bladeH, tipY = baseY - bladeH;
+      const midX = bx + wind * bladeH * .45, midY = baseY - bladeH * .5;
+      gx.strokeStyle = `rgba(${b.color},${.55 * a})`; gx.lineWidth = (2.8 + near * 1.6) * R;
+      gx.shadowColor = `rgba(${b.color},${.8 * a})`; gx.shadowBlur = (3 + near * 6) * R;
+      gx.beginPath(); gx.moveTo(bx, baseY); gx.quadraticCurveTo(midX, midY, tipX, tipY); gx.stroke();
+      if (b.leaf) {
+        gx.save(); gx.translate(tipX, tipY); gx.rotate(wind * .8);
+        gx.fillStyle = `rgba(${b.color},${.5 * a})`;
+        gx.beginPath(); gx.ellipse(0, 0, 5.5 * R, 10 * R, 0, 0, 6.283); gx.fill();
+        gx.restore();
+      }
+      gx.shadowBlur = 0;
+    });
+  })();
+})();
+
+
+// ---------------- Crawling neon root/tendril shapes from the corners (drawn once, only opacity pulses) ----------------
+(function () {
+  const c = document.getElementById("tendrilsCanvas"); if (!c) return;
+  const gx = c.getContext("2d"), R = Math.min(window.devicePixelRatio || 1, 2);
+  let W, H, off;
+
+  function build() {
+    W = c.width = c.offsetWidth * R; H = c.height = c.offsetHeight * R;
+    off = document.createElement("canvas"); off.width = W; off.height = H;
+    const ox = off.getContext("2d");
+    const TCOLOR = "186,255,57";
+    function grow(x, y, ang, len, depth) {
+      if (depth <= 0 || len < 6) return;
+      const steps = 4 + Math.floor(Math.random() * 4), stepLen = len / steps;
+      let cx = x, cy = y, a = ang;
+      for (let i = 0; i < steps; i++) {
+        a += (Math.random() - .5) * .7;
+        const nx = cx + Math.cos(a) * stepLen, ny = cy + Math.sin(a) * stepLen;
+        ox.lineWidth = Math.max(1, depth * .8) * R;
+        ox.strokeStyle = `rgba(${TCOLOR},.55)`;
+        ox.shadowColor = `rgba(${TCOLOR},.9)`; ox.shadowBlur = 4 * R;
+        ox.beginPath(); ox.moveTo(cx, cy); ox.lineTo(nx, ny); ox.stroke();
+        cx = nx; cy = ny;
+        if (Math.random() < .22 && depth > 1) grow(cx, cy, a + (Math.random() < .5 ? 1 : -1) * (.7 + Math.random() * .6), len * .5, depth - 1);
+      }
+      if (depth > 1) grow(cx, cy, a, len * .72, depth - 1);
+    }
+    [[0, H * .04, .35, W * .46], [W, H * .02, Math.PI - .45, W * .4],
+     [0, H * .99, -.3, W * .42], [W, H * .97, Math.PI + .35, W * .42]]
+      .forEach(a => grow(a[0], a[1], a[2], a[3], 5));
+  }
+  build(); addEventListener("resize", build);
+
+  let heroVisible = true;
+  const heroEl = document.getElementById("hero");
+  if (heroEl && "IntersectionObserver" in window) {
+    new IntersectionObserver(es => { heroVisible = es[0].isIntersecting; }, { threshold: 0 }).observe(heroEl);
+  }
+
+  (function draw(ts) {
+    requestAnimationFrame(draw);
+    if (!c.isConnected || !heroVisible) return;
+    ts = ts || 0; const t = ts / 1000;
+    gx.clearRect(0, 0, W, H);
+    gx.globalAlpha = .55 + .25 * Math.sin(t * .5);
+    gx.drawImage(off, 0, 0);
+    gx.globalAlpha = 1;
+  })();
+})();
+
+// ---------------- Moon with a falling light beam + a tiny satellite orbiting it ----------------
+(function () {
+  const c = document.getElementById("moonCanvas"); if (!c) return;
+  const mx = c.getContext("2d"), R = Math.min(window.devicePixelRatio || 1, 2);
+  let W, H;
+  const size = () => { W = c.width = c.offsetWidth * R; H = c.height = c.offsetHeight * R; };
+  size(); addEventListener("resize", size);
+
+  let heroVisible = true;
+  const heroEl = document.getElementById("hero");
+  if (heroEl && "IntersectionObserver" in window) {
+    new IntersectionObserver(es => { heroVisible = es[0].isIntersecting; }, { threshold: 0 }).observe(heroEl);
+  }
+
+  (function draw(ts) {
+    requestAnimationFrame(draw);
+    if (!c.isConnected || !heroVisible) return;
+    ts = ts || 0; const t = ts / 1000;
+    mx.clearRect(0, 0, W, H);
+
+    const moonX = W * .87, moonY = H * .16, moonR = Math.min(W, H) * .045;
+
+    // soft outer glow halo
+    const glow = mx.createRadialGradient(moonX, moonY, 0, moonX, moonY, moonR * 6);
+    glow.addColorStop(0, "rgba(220,235,255,.28)"); glow.addColorStop(1, "rgba(220,235,255,0)");
+    mx.fillStyle = glow; mx.beginPath(); mx.arc(moonX, moonY, moonR * 6, 0, 6.283); mx.fill();
+
+    // light beam falling down-left from the moon, gently flickering
+    const beamLen = Math.max(W, H) * .95, beamAngle = 2.15;
+    const bx2 = moonX + Math.cos(beamAngle) * beamLen, by2 = moonY + Math.sin(beamAngle) * beamLen;
+    const perp = beamAngle + Math.PI / 2, nearW = moonR * .5, farW = moonR * 3.4;
+    const flicker = .5 + .5 * Math.sin(t * .8);
+    mx.beginPath();
+    mx.moveTo(moonX + Math.cos(perp) * nearW, moonY + Math.sin(perp) * nearW);
+    mx.lineTo(moonX - Math.cos(perp) * nearW, moonY - Math.sin(perp) * nearW);
+    mx.lineTo(bx2 - Math.cos(perp) * farW, by2 - Math.sin(perp) * farW);
+    mx.lineTo(bx2 + Math.cos(perp) * farW, by2 + Math.sin(perp) * farW);
+    mx.closePath();
+    mx.save(); mx.globalCompositeOperation = "lighter";
+    const beamGrad = mx.createLinearGradient(moonX, moonY, bx2, by2);
+    beamGrad.addColorStop(0, `rgba(210,255,235,${.55 + .2 * flicker})`);
+    beamGrad.addColorStop(.35, `rgba(70,255,180,${.4 + .15 * flicker})`);
+    beamGrad.addColorStop(1, "rgba(40,255,160,0)");
+    mx.fillStyle = beamGrad; mx.fill();
+    mx.restore();
+
+    // the moon disk, with a crescent cut out of it
+    mx.beginPath(); mx.arc(moonX, moonY, moonR, 0, 6.283);
+    mx.fillStyle = "#eef4ff"; mx.shadowColor = "#cfe2ff"; mx.shadowBlur = 16 * R; mx.fill(); mx.shadowBlur = 0;
+    mx.save(); mx.globalCompositeOperation = "destination-out";
+    mx.beginPath(); mx.arc(moonX - moonR * .42, moonY - moonR * .18, moonR * .92, 0, 6.283); mx.fill();
+    mx.restore();
+
+    // a tiny satellite, orbiting tight and fast right around the moon
+    const orbR = moonR * 2.6, a = t * .9;
+    const sxp = moonX + Math.cos(a) * orbR, syp = moonY + Math.sin(a) * orbR * .55;
+    for (let i = 1; i <= 10; i++) {
+      const ta = a - i * .08;
+      const tx = moonX + Math.cos(ta) * orbR, ty = moonY + Math.sin(ta) * orbR * .55;
+      mx.beginPath(); mx.arc(tx, ty, (1.6 - i * .1) * R, 0, 6.283);
+      mx.fillStyle = `rgba(160,200,255,${(1 - i / 10) * .4})`; mx.fill();
+    }
+    mx.save(); mx.translate(sxp, syp); mx.rotate(a + Math.PI / 2);
+    mx.fillStyle = "#dfffee"; mx.shadowColor = "#7affbe"; mx.shadowBlur = 6 * R;
+    mx.fillRect(-2 * R, -3.5 * R, 4 * R, 7 * R);
+    mx.fillStyle = "rgba(120,200,255,.9)";
+    mx.fillRect(-7 * R, -1.5 * R, 4.5 * R, 3 * R);
+    mx.fillRect(2.5 * R, -1.5 * R, 4.5 * R, 3 * R);
+    mx.shadowBlur = 0; mx.restore();
+  })();
+})();
 (function () {
   const c = document.getElementById("satCanvas"); if (!c) return;
   const sx = c.getContext("2d"), R = Math.min(window.devicePixelRatio || 1, 2);
@@ -353,20 +829,20 @@ const $ = id => document.getElementById(id);
     if (!c.isConnected || !heroVisible) return;
     ts = ts || 0; const t = ts / 1000;
     sx.clearRect(0, 0, W, H);
-    const cx = W * .55, cy = H * .42, rx = Math.min(W, H) * .34, ry = Math.min(W, H) * .2;
-    const a = t * .35;
-    const sxp = cx + Math.cos(a) * rx, syp = cy + Math.sin(a) * ry * .6;
+    const cx = W * .5, cy = H * .42, rx = W * .46, ry = H * .3;
+    const a = t * .3;
+    const sxp = cx + Math.cos(a) * rx, syp = cy + Math.sin(a) * ry;
 
     // faint orbit path
-    sx.beginPath(); sx.ellipse(cx, cy, rx, ry * .6, 0, 0, 6.283);
-    sx.strokeStyle = "rgba(120,255,190,.18)"; sx.lineWidth = 1 * R; sx.setLineDash([2 * R, 6 * R]); sx.stroke(); sx.setLineDash([]);
+    sx.beginPath(); sx.ellipse(cx, cy, rx, ry, 0, 0, 6.283);
+    sx.strokeStyle = "rgba(120,255,190,.16)"; sx.lineWidth = 1 * R; sx.setLineDash([2 * R, 7 * R]); sx.stroke(); sx.setLineDash([]);
 
     // fading trail behind the satellite
-    for (let i = 1; i <= 18; i++) {
-      const ta = a - i * .045;
-      const tx = cx + Math.cos(ta) * rx, ty = cy + Math.sin(ta) * ry * .6;
-      sx.beginPath(); sx.arc(tx, ty, (2.2 - i * .08) * R, 0, 6.283);
-      sx.fillStyle = `rgba(120,255,190,${(1 - i / 18) * .35})`; sx.fill();
+    for (let i = 1; i <= 22; i++) {
+      const ta = a - i * .04;
+      const tx = cx + Math.cos(ta) * rx, ty = cy + Math.sin(ta) * ry;
+      sx.beginPath(); sx.arc(tx, ty, (2.4 - i * .08) * R, 0, 6.283);
+      sx.fillStyle = `rgba(120,255,190,${(1 - i / 22) * .35})`; sx.fill();
     }
 
     // downlink scan-beam pulsing toward the ground
@@ -377,11 +853,13 @@ const $ = id => document.getElementById(id);
 
     // satellite body (rotated to face its direction of travel)
     sx.save(); sx.translate(sxp, syp); sx.rotate(a + Math.PI / 2);
-    sx.fillStyle = "#dfffee"; sx.shadowColor = "#7affbe"; sx.shadowBlur = 10 * R;
-    sx.fillRect(-4 * R, -7 * R, 8 * R, 14 * R);
-    sx.fillStyle = "rgba(120,200,255,.85)";
-    sx.fillRect(-16 * R, -3 * R, 10 * R, 6 * R);
-    sx.fillRect(6 * R, -3 * R, 10 * R, 6 * R);
+    sx.beginPath(); sx.arc(0, 0, 20 * R, 0, 6.283);
+    sx.fillStyle = "rgba(120,255,190,.08)"; sx.fill();
+    sx.fillStyle = "#dfffee"; sx.shadowColor = "#7affbe"; sx.shadowBlur = 14 * R;
+    sx.fillRect(-5 * R, -8 * R, 10 * R, 16 * R);
+    sx.fillStyle = "rgba(120,200,255,.9)";
+    sx.fillRect(-19 * R, -4 * R, 12 * R, 8 * R);
+    sx.fillRect(7 * R, -4 * R, 12 * R, 8 * R);
     sx.shadowBlur = 0;
     sx.restore();
   })();
@@ -410,13 +888,32 @@ const $ = id => document.getElementById(id);
     if (!heroVisible) { requestAnimationFrame(draw); return; }   // skip drawing (and the costly shadowBlur) while off-screen
     x.clearRect(0, 0, W, H);
     x.shadowColor = "#9ec5ff"; x.shadowBlur = 3;   // fixed, small blur once per frame instead of per-star (was the main jank source)
+    const bright = [];   // positions of the bigger stars, used to draw constellation lines below
     S.forEach(s => {
       s.p += s.t;
       const px = (s.x * W - mx * s.d * 40 * R + W) % W, py = (s.y * H - my * s.d * 40 * R + H) % H;
-      x.globalAlpha = .55 + .45 * Math.sin(s.p); x.fillStyle = s.r > 2 ? "#cfe2ff" : "#fff";
+      const tw = .55 + .45 * Math.sin(s.p);
+      x.globalAlpha = tw; x.fillStyle = s.r > 2 ? "#cfe2ff" : "#fff";
       x.beginPath(); x.arc(px, py, s.r * R, 0, 6.283); x.fill();
+      if (s.r > 1.3) bright.push({ px, py, tw });
     });
     x.shadowBlur = 0;
+
+    // ---------- constellation lines: nearby bright stars link up with a faint glowing thread ----------
+    x.globalAlpha = 1; x.lineWidth = 1 * R;
+    const MAXD = 130 * R;
+    for (let i = 0; i < bright.length; i++) {
+      for (let j = i + 1; j < bright.length; j++) {
+        const dx = bright[i].px - bright[j].px, dy = bright[i].py - bright[j].py;
+        const d = Math.hypot(dx, dy);
+        if (d >= MAXD) continue;
+        const a = (1 - d / MAXD) * .28 * Math.min(bright[i].tw, bright[j].tw);
+        if (a < .02) continue;
+        x.strokeStyle = `rgba(190,255,190,${a})`;
+        x.beginPath(); x.moveTo(bright[i].px, bright[i].py); x.lineTo(bright[j].px, bright[j].py); x.stroke();
+      }
+    }
+
     if (Math.random() < .008) shots.push({ x: Math.random() * W * .8, y: Math.random() * H * .4, l: 0 });
     shots = shots.filter(t => t.l < 45);
     shots.forEach(t => {
@@ -427,6 +924,38 @@ const $ = id => document.getElementById(id);
   })();
 })();
 
+
+// ---------------- Neon tendrils fixed to the viewport (visible on every page/section, not just the hero) ----------------
+(function () {
+  const c = document.getElementById("globalTendrils"); if (!c) return;
+  const gx = c.getContext("2d"), R = Math.min(window.devicePixelRatio || 1, 2);
+  function build() {
+    const W = c.width = innerWidth * R, H = c.height = innerHeight * R;
+    c.style.width = innerWidth + "px"; c.style.height = innerHeight + "px";
+    gx.clearRect(0, 0, W, H);
+    const TCOLOR = "186,255,57";
+    function grow(x, y, ang, len, depth) {
+      if (depth <= 0 || len < 6) return;
+      const steps = 4 + Math.floor(Math.random() * 4), stepLen = len / steps;
+      let cx = x, cy = y, a = ang;
+      for (let i = 0; i < steps; i++) {
+        a += (Math.random() - .5) * .7;
+        const nx = cx + Math.cos(a) * stepLen, ny = cy + Math.sin(a) * stepLen;
+        gx.lineWidth = Math.max(1, depth * .8) * R;
+        gx.strokeStyle = `rgba(${TCOLOR},.4)`;
+        gx.shadowColor = `rgba(${TCOLOR},.8)`; gx.shadowBlur = 4 * R;
+        gx.beginPath(); gx.moveTo(cx, cy); gx.lineTo(nx, ny); gx.stroke();
+        cx = nx; cy = ny;
+        if (Math.random() < .22 && depth > 1) grow(cx, cy, a + (Math.random() < .5 ? 1 : -1) * (.7 + Math.random() * .6), len * .5, depth - 1);
+      }
+      if (depth > 1) grow(cx, cy, a, len * .72, depth - 1);
+    }
+    [[0, H, -.35, W * .3], [W, H, Math.PI + .35, W * .3]].forEach(a => grow(a[0], a[1], a[2], a[3], 4));
+    gx.shadowBlur = 0;
+  }
+  build();
+  let t; addEventListener("resize", () => { clearTimeout(t); t = setTimeout(build, 200); });
+})();
 
 // ---------------- Ambient background: reactive dot-grid glow + drifting space-dust (whole page, all sections) ----------------
 (function () {
@@ -452,11 +981,23 @@ const $ = id => document.getElementById(id);
   let paused = document.hidden;
   document.addEventListener("visibilitychange", () => { paused = document.hidden; });
 
+  let spotX = -9999, spotY = -9999; // eased position, so the spotlight glides and lingers rather than snapping
   (function draw(ts) {
     requestAnimationFrame(draw);
     if (paused || !c.isConnected) return;
     ts = ts || 0;
     ctx.clearRect(0, 0, W, H);
+
+    // big soft spotlight that glides after the cursor and washes the whole background, not just a few dots
+    if (mx > -1000) {
+      spotX += (mx * R - spotX) * .06; spotY += (my * R - spotY) * .06;
+      const rad = 340 * R;
+      const spot = ctx.createRadialGradient(spotX, spotY, 0, spotX, spotY, rad);
+      spot.addColorStop(0, "rgba(200,255,190,.10)");
+      spot.addColorStop(.6, "rgba(170,255,150,.04)");
+      spot.addColorStop(1, "rgba(170,255,150,0)");
+      ctx.fillStyle = spot; ctx.beginPath(); ctx.arc(spotX, spotY, rad, 0, 6.283); ctx.fill();
+    }
 
     if (mx > -1000 && (!trail.length || Math.hypot(mx - trail[trail.length - 1].x, my - trail[trail.length - 1].y) > 6)) {
       trail.push({ x: mx, y: my, born: ts });
@@ -481,7 +1022,7 @@ const $ = id => document.getElementById(id);
       const p = key.split(",");
       const px = p[0] * GAP * R, py = p[1] * GAP * R, r = (1 + k * 2.2) * R;
       ctx.beginPath(); ctx.arc(px, py, r, 0, 6.283);
-      ctx.fillStyle = `rgba(${k > .6 ? "138,92,255" : "77,163,255"},${Math.min(.85, .15 + k * .9)})`;
+      ctx.fillStyle = `rgba(${k > .6 ? "92,255,163" : "186,255,57"},${Math.min(.85, .15 + k * .9)})`;
       ctx.fill();
     });
 
@@ -491,7 +1032,7 @@ const $ = id => document.getElementById(id);
       if (m.x < -.02) m.x = 1.02; if (m.x > 1.02) m.x = -.02;
       const px = m.x * innerWidth * R, py = m.y * innerHeight * R, a = .25 + .2 * Math.sin(m.p * 6);
       ctx.beginPath(); ctx.arc(px, py, m.s * R, 0, 6.283);
-      ctx.fillStyle = `rgba(180,200,255,${a})`; ctx.fill();
+      ctx.fillStyle = `rgba(200,255,200,${a})`; ctx.fill();
     });
   })();
 })();
@@ -506,25 +1047,20 @@ let authEmail = localStorage.getItem("sq_email") || null;
 let authMode = "login";
 const authHeaders = () => authToken ? { "Authorization": "Bearer " + authToken } : {};
 
-function renderAuthPill() {
-  $("authPill").innerHTML = authToken
-    ? `<span class="who">👤 <b>${esc(authEmail)}</b></span><button type="button" class="logout" id="logoutBtn">Log Out</button>`
-    : `<button type="button" id="openAuth">Log In / Sign Up</button>`;
+function renderAuthUI() {
+  $("sidebarUser").innerHTML = authToken
+    ? `<div class="who">👤 <b>${esc(authEmail)}</b></div><button type="button" class="logout" id="logoutBtn">Log Out</button>`
+    : `<a href="#/login" class="loginlink">Log In / Sign Up</a>`;
   if (authToken) $("logoutBtn").onclick = doLogout;
-  else $("openAuth").onclick = () => openAuthModal("login");
 }
-function openAuthModal(mode) {
+function setAuthTab(mode) {
   authMode = mode; $("authErr").textContent = "";
   $("tabLogin").classList.toggle("on", mode === "login");
   $("tabSignup").classList.toggle("on", mode === "signup");
   $("authGo").textContent = mode === "login" ? "Log In" : "Create Account";
-  $("authModal").classList.add("show");
-  $("authEmail").focus();
 }
-$("tabLogin").onclick = () => openAuthModal("login");
-$("tabSignup").onclick = () => openAuthModal("signup");
-$("authClose").onclick = () => $("authModal").classList.remove("show");
-$("authModal").onclick = e => { if (e.target.id === "authModal") $("authModal").classList.remove("show"); };
+$("tabLogin").onclick = () => setAuthTab("login");
+$("tabSignup").onclick = () => setAuthTab("signup");
 [$("authEmail"), $("authPass")].forEach(inp => inp.onkeydown = e => { if (e.key === "Enter") $("authGo").click(); });
 
 $("authGo").onclick = async () => {
@@ -538,8 +1074,9 @@ $("authGo").onclick = async () => {
     if (!r.ok) throw new Error(d.error || "Something went wrong");
     authToken = d.token; authEmail = d.email;
     localStorage.setItem("sq_token", authToken); localStorage.setItem("sq_email", authEmail);
-    $("authModal").classList.remove("show"); $("authEmail").value = ""; $("authPass").value = "";
-    renderAuthPill(); loadHistory(); loadWatchlist();
+    $("authEmail").value = ""; $("authPass").value = "";
+    renderAuthUI(); loadHistory(); loadWatchlist();
+    location.hash = "#/home";
   } catch (e) { $("authErr").textContent = e.message; }
   $("authGo").disabled = false; $("authGo").textContent = authMode === "login" ? "Log In" : "Create Account";
 };
@@ -548,14 +1085,191 @@ async function doLogout() {
   try { await fetch("/api/auth/logout", { method: "POST", headers: authHeaders() }); } catch (e) {}
   authToken = null; authEmail = null;
   localStorage.removeItem("sq_token"); localStorage.removeItem("sq_email");
-  renderAuthPill();
-  $("histList").innerHTML = "No past analyses yet — ask something!";
-  $("wlList").innerHTML = lockedNote();
+  renderAuthUI();
+  location.hash = "#/login";
 }
 function lockedNote() {
-  return `<div class="lockNote">🔒 Log in to use this <button type="button" class="smallbtn" onclick="openAuthModal('login')">Log In</button></div>`;
+  return `<div class="lockNote">🔒 <a href="#/login" style="color:var(--acc)">Log in</a> to use this</div>`;
 }
-renderAuthPill();
+renderAuthUI();
+
+// ==================== Router (hash-based, no page reloads) ====================
+const PAGES = ["login", "home", "analyst", "watchlist", "history", "map", "dashboard"];
+function currentRoute() {
+  const r = location.hash.replace(/^#\/?/, "");
+  return PAGES.includes(r) ? r : "home";
+}
+function renderRoute() {
+  let r = currentRoute();
+  if (!authToken && (r === "watchlist" || r === "history" || r === "dashboard")) r = "login";
+  if (authToken && r === "login") r = "home";
+  if (location.hash !== "#/" + r) history.replaceState(null, "", "#/" + r);
+  document.documentElement.dataset.page = r;
+  document.querySelectorAll(".page").forEach(p => p.classList.toggle("active", p.id === "page-" + r));
+  document.querySelectorAll(".sidenav a").forEach(a => a.classList.toggle("on", a.dataset.route === r));
+  $("sidebar").classList.toggle("hide", r === "login");
+  $("pages").classList.toggle("full", r === "login");
+  if (r === "watchlist") loadWatchlist();
+  if (r === "history") loadHistory();
+  if (r === "map") initMap();
+  if (r === "dashboard") loadDashboard();
+  scrollTo(0, 0);
+}
+addEventListener("hashchange", renderRoute);
+renderRoute();
+
+// ==================== Map Explorer: click anywhere on Earth → real satellite imagery ====================
+let mapInitialized = false, leafletMap = null, mapMarker = null, clickedLat = null, clickedLon = null, lastImgBlob = null;
+
+function initMap() {
+  if (mapInitialized) { setTimeout(() => leafletMap && leafletMap.invalidateSize(), 60); return; }
+  if (!window.L) { setTimeout(initMap, 200); return; }   // Leaflet script (deferred) may still be loading
+  mapInitialized = true;
+  leafletMap = L.map("leafletMap").setView([26.9124, 75.7873], 12);  // default: Jaipur
+  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+    attribution: "Tiles &copy; Esri", maxZoom: 19
+  }).addTo(leafletMap);
+  leafletMap.on("click", onMapClick);
+  setTimeout(() => leafletMap.invalidateSize(), 100);
+}
+
+async function onMapClick(e) {
+  clickedLat = e.latlng.lat; clickedLon = e.latlng.lng;
+  if (mapMarker) leafletMap.removeLayer(mapMarker);
+  mapMarker = L.marker([clickedLat, clickedLon]).addTo(leafletMap);
+  $("mapCoords").textContent = `${clickedLat.toFixed(5)}, ${clickedLon.toFixed(5)}`;
+  $("mapPlace").textContent = "Looking up place name…";
+  $("mapPreview").style.display = "none"; lastImgBlob = null;
+  $("mapUseBtn").disabled = true; $("mapWlBtn").disabled = true;
+  $("mapFetchBtn").disabled = false;
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${clickedLat}&lon=${clickedLon}&zoom=14`);
+    const d = await r.json();
+    $("mapPlace").textContent = d.display_name || "Unnamed location";
+  } catch (err) { $("mapPlace").textContent = "(place lookup unavailable)"; }
+}
+
+$("mapFetchBtn").onclick = async () => {
+  if (clickedLat === null) return;
+  const deg = parseFloat($("mapZoomSel").value);
+  const bbox = `${clickedLon - deg},${clickedLat - deg},${clickedLon + deg},${clickedLat + deg}`;
+  const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bbox}&bboxSR=4326&imageSR=4326&size=640,640&format=png32&f=image`;
+  $("mapFetchBtn").disabled = true; $("mapFetchBtn").textContent = "Fetching imagery…";
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error("imagery service unavailable");
+    lastImgBlob = await r.blob();
+    $("mapPreview").src = URL.createObjectURL(lastImgBlob);
+    $("mapPreview").style.display = "block";
+    $("mapUseBtn").disabled = false; $("mapWlBtn").disabled = false;
+  } catch (err) { alert("Could not fetch imagery: " + err.message); }
+  $("mapFetchBtn").disabled = false; $("mapFetchBtn").textContent = "📡 Fetch satellite image here";
+};
+
+$("mapUseBtn").onclick = () => {
+  if (!lastImgBlob) return;
+  const file = new File([lastImgBlob], `map_${clickedLat.toFixed(4)}_${clickedLon.toFixed(4)}.png`, { type: "image/png" });
+  addFiles([file]);
+  location.hash = "#/analyst";
+};
+
+$("mapWlBtn").onclick = async () => {
+  if (!lastImgBlob) return;
+  if (!authToken) { location.hash = "#/login"; return; }
+  const suggested = ($("mapPlace").textContent || "").split(",")[0] || `Point ${clickedLat.toFixed(3)},${clickedLon.toFixed(3)}`;
+  const name = prompt("Name this watchlist area:", suggested);
+  if (!name) return;
+  const fd = new FormData(); fd.append("name", name);
+  fd.append("file", new File([lastImgBlob], "baseline.png", { type: "image/png" }));
+  $("mapWlBtn").disabled = true; $("mapWlBtn").textContent = "Saving…";
+  try {
+    const r = await fetch("/api/watchlist/save", { method: "POST", body: fd, headers: authHeaders() });
+    if (!r.ok) throw new Error((await r.json()).error || "save failed");
+    alert("Saved to Watchlist ✅"); await loadWatchlist();
+  } catch (err) { alert("Could not save: " + err.message); }
+  $("mapWlBtn").disabled = false; $("mapWlBtn").textContent = "🚨 Save as Watchlist baseline";
+};
+
+// ==================== Voice input (Web Speech API, browser-native, no API key) ====================
+(function setupVoice() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { $("micBtn").style.display = "none"; return; }   // gracefully hide on unsupported browsers
+  const rec = new SR();
+  rec.lang = "en-IN"; rec.interimResults = false; rec.maxAlternatives = 1;
+  let listening = false;
+  rec.onresult = e => { $("q").value = e.results[0][0].transcript; };
+  rec.onend = () => { listening = false; $("micBtn").classList.remove("on"); };
+  rec.onerror = () => { listening = false; $("micBtn").classList.remove("on"); };
+  $("micBtn").onclick = () => {
+    if (listening) { rec.stop(); return; }
+    listening = true; $("micBtn").classList.add("on");
+    try { rec.start(); } catch (e) { listening = false; $("micBtn").classList.remove("on"); }
+  };
+})();
+
+// ==================== Dashboard: aggregate view across Watchlist + History ====================
+async function loadDashboard() {
+  if (!authToken) return;
+  try {
+    const [hr, wr] = await Promise.all([
+      fetch("/api/history", { headers: authHeaders() }),
+      fetch("/api/watchlist", { headers: authHeaders() })
+    ]);
+    const hist = hr.ok ? await hr.json() : [];
+    const wl = wr.ok ? await wr.json() : [];
+    $("dQueries").textContent = hist.length;
+    $("dAreas").textContent = wl.length;
+    const checked = wl.filter(w => w.last_check_ts);
+    const alerts = checked.filter(w => w.last_alert).length;
+    $("dAlerts").textContent = alerts;
+    const avg = checked.length ? (checked.reduce((s, w) => s + (w.last_changed_pct || 0), 0) / checked.length) : 0;
+    $("dAvg").textContent = avg.toFixed(1) + "%";
+    if (checked.length) {
+      const maxPct = Math.max(...checked.map(w => w.last_changed_pct || 0), 1);
+      $("dashBars").innerHTML = checked.map(w => `
+        <div class="bar" style="height:${Math.max(4, (w.last_changed_pct / maxPct) * 100)}%">
+          <span>${esc(w.name.slice(0, 10))}</span>
+        </div>`).join("");
+    }
+  } catch (e) { console.warn("dashboard load failed", e); }
+}
+
+// ==================== Command palette (Ctrl/Cmd + K) ====================
+const CMDS = [
+  { label: "🏠 Go to Home", route: "home" },
+  { label: "🔭 Go to Analyst", route: "analyst" },
+  { label: "🗺️ Go to Map Explorer", route: "map" },
+  { label: "🚨 Go to Watchlist", route: "watchlist" },
+  { label: "🕒 Go to History", route: "history" },
+  { label: "📊 Go to Dashboard", route: "dashboard" },
+];
+let cmdkSel = 0;
+function openCmdk() {
+  $("cmdk").classList.add("show"); $("cmdkInput").value = ""; cmdkSel = 0;
+  renderCmdk(CMDS); $("cmdkInput").focus();
+}
+function closeCmdk() { $("cmdk").classList.remove("show"); }
+function renderCmdk(list) {
+  $("cmdkList").innerHTML = list.map((c, i) => `<div class="cmdk-item ${i === cmdkSel ? "sel" : ""}" data-i="${i}">${c.label}</div>`).join("")
+    || `<div class="cmdk-item">No matches</div>`;
+  document.querySelectorAll(".cmdk-item").forEach(el => el.onclick = () => { goCmd(list[+el.dataset.i]); });
+}
+function goCmd(c) { if (!c) return; closeCmdk(); location.hash = "#/" + c.route; }
+$("cmdkInput").oninput = () => {
+  const q = $("cmdkInput").value.toLowerCase();
+  cmdkSel = 0; renderCmdk(CMDS.filter(c => c.label.toLowerCase().includes(q)));
+};
+$("cmdkInput").onkeydown = e => {
+  const visible = CMDS.filter(c => c.label.toLowerCase().includes($("cmdkInput").value.toLowerCase()));
+  if (e.key === "ArrowDown") { cmdkSel = Math.min(cmdkSel + 1, visible.length - 1); renderCmdk(visible); e.preventDefault(); }
+  else if (e.key === "ArrowUp") { cmdkSel = Math.max(cmdkSel - 1, 0); renderCmdk(visible); e.preventDefault(); }
+  else if (e.key === "Enter") { goCmd(visible[cmdkSel]); }
+  else if (e.key === "Escape") { closeCmdk(); }
+};
+$("cmdk").onclick = e => { if (e.target.id === "cmdk") closeCmdk(); };
+addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); openCmdk(); }
+});
 
 // ==================== Wow-factor helpers ====================
 function typeText(el, text, onDone, targetFrames = 110, speed = 14) {
@@ -728,19 +1442,25 @@ async function loadWatchlist() {
 }
 loadWatchlist();
 
-$("saveWL").onclick = async () => {
-  if (!authToken) return openAuthModal("login");
-  if (!files.length) return alert("Upload at least one image first (Image 1 will be saved as the baseline).");
+$("saveWL").onclick = () => {
+  if (!authToken) { location.hash = "#/login"; return; }
+  $("wlBaselineFile").click();
+};
+
+$("wlBaselineFile").onchange = async e => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f) return;
   const name = prompt("Name this watchlist area (e.g. 'Nahargarh Forest - North Ridge'):");
   if (!name) return;
-  const fd = new FormData(); fd.append("name", name); fd.append("file", files[0]);
-  $("saveWL").textContent = "Saving…"; $("saveWL").disabled = true;
+  const fd = new FormData(); fd.append("name", name); fd.append("file", f);
+  const btn = $("saveWL");
+  btn.textContent = "Saving…"; btn.disabled = true;
   try {
     const r = await fetch("/api/watchlist/save", { method: "POST", body: fd, headers: authHeaders() });
     if (!r.ok) throw new Error((await r.json()).error || "save failed");
     await loadWatchlist();
   } catch (e) { alert("Could not save watchlist: " + e.message); }
-  $("saveWL").textContent = "+ Save Image 1 as Watchlist baseline"; $("saveWL").disabled = false;
+  btn.textContent = "+ New Watchlist (upload a baseline image)"; btn.disabled = false;
 };
 
 $("wlCheckFile").onchange = async e => {
@@ -754,6 +1474,81 @@ $("wlCheckFile").onchange = async e => {
   } catch (err) { alert("Could not check image: " + err.message); }
   wlPendingCheckId = null;
 };
+
+// ---------------- Draggable + auto-scrolling "1 2 3 4" mini step-card carousel ----------------
+(function () {
+  const track = document.getElementById("mcTrack"); if (!track) return;
+  let offset = 0, dragging = false, moved = false, startX = 0, startOffset = 0, paused = false, half = 0;
+  function measure() { half = track.scrollWidth / 2; }
+  measure(); addEventListener("resize", measure);
+
+  function apply() {
+    if (half > 0) { if (offset <= -half) offset += half; if (offset > 0) offset -= half; }
+    track.style.transform = `translateX(${offset}px)`;
+  }
+  (function loop() {
+    requestAnimationFrame(loop);
+    if (!dragging && !paused) offset -= 0.35;
+    apply();
+  })();
+
+  track.addEventListener("mouseenter", () => paused = true);
+  track.addEventListener("mouseleave", () => { paused = false; dragging = false; track.classList.remove("dragging"); });
+  track.addEventListener("pointerdown", e => {
+    dragging = true; moved = false; paused = true; startX = e.clientX; startOffset = offset;
+    track.classList.add("dragging"); track.setPointerCapture(e.pointerId);
+  });
+  track.addEventListener("pointermove", e => {
+    if (!dragging) return;
+    if (Math.abs(e.clientX - startX) > 3) moved = true;
+    offset = startOffset + (e.clientX - startX);
+  });
+  ["pointerup", "pointercancel"].forEach(ev => track.addEventListener(ev, () => {
+    dragging = false; track.classList.remove("dragging");
+  }));
+})();
+
+// ---------------- Click "pop" + ripple on every button (delegated so it also covers ----------------
+// ---------------- buttons rendered later, like history/watchlist rows) ----------------
+(function () {
+  const SEL = '.btn, form button, .smallbtn, #chips button, .authCard .go, .authTabs button, .feat, .mcard, .th, .wl-item, .hrow';
+  document.addEventListener('pointerdown', e => {
+    const btn = e.target.closest(SEL);
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height) * 1.3;
+    const span = document.createElement('span');
+    span.className = 'ripple';
+    span.style.width = span.style.height = size + 'px';
+    span.style.left = (e.clientX - rect.left - size / 2) + 'px';
+    span.style.top = (e.clientY - rect.top - size / 2) + 'px';
+    btn.appendChild(span);
+    setTimeout(() => span.remove(), 650);
+    btn.classList.remove('pop-click'); void btn.offsetWidth; btn.classList.add('pop-click');
+  });
+})();
+
+// ---------------- "Why SatQuery AI" cards: click to select/lift one, like flipping through options ----------------
+(function () {
+  const feats = document.querySelectorAll('.feat');
+  feats.forEach(f => f.addEventListener('click', () => {
+    const was = f.classList.contains('active');
+    feats.forEach(x => x.classList.remove('active'));
+    if (!was) f.classList.add('active');
+    f.classList.remove('waving'); void f.offsetWidth; f.classList.add('waving');
+    setTimeout(() => f.classList.remove('waving'), 900);
+  }));
+})();
+
+// ---------------- Hero wordmark: gradient sweep follows the cursor across the hero ----------------
+(function () {
+  const hero = document.getElementById('hero'), h1 = document.querySelector('#hero h1');
+  if (!hero || !h1) return;
+  hero.addEventListener('mousemove', e => {
+    const r = hero.getBoundingClientRect();
+    h1.style.setProperty('--gx', ((e.clientX - r.left) / r.width * 70 + 10) + '%');
+  });
+})();
 </script>
 </body>
 </html>
