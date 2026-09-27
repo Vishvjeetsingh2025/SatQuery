@@ -59,9 +59,6 @@ h2{font-size:1.1rem;margin-bottom:1rem}
 #ambientDots{position:fixed;inset:0;z-index:-2;pointer-events:none;
   background-image:radial-gradient(rgba(170,255,150,.16) 1px,transparent 1.6px);background-size:28px 28px}
 #ambientGlow{position:fixed;inset:0;z-index:-1;pointer-events:none;width:100vw;height:100vh}
-#globalTendrils{position:fixed;inset:0;z-index:-1;pointer-events:none;width:100vw;height:100vh;
-  animation:tendrilPulse 5s ease-in-out infinite}
-@keyframes tendrilPulse{0%,100%{opacity:.5}50%{opacity:.85}}
 .dot{animation:p 1s infinite}@keyframes p{50%{opacity:.3}}
 #chips{display:flex;gap:.5rem;flex-wrap:wrap;margin:.8rem 0}
 #chips button{background:none;border:1px solid var(--line);color:var(--mut);border-radius:99px;padding:.35rem .9rem;font-size:.8rem;cursor:pointer}
@@ -343,9 +340,6 @@ html:not([data-page]),html[data-page="home"],html[data-page="login"]{--acc:#baff
 </style>
 </head>
 <body>
-<div id="ambientDots"></div>
-<canvas id="ambientGlow"></canvas>
-<canvas id="globalTendrils"></canvas>
 <nav id="sidebar">
   <a href="#/home" class="brand">🛰️ SatQuery<span>AI</span></a>
   <div class="sidenav">
@@ -377,6 +371,8 @@ html:not([data-page]),html[data-page="home"],html[data-page="login"]{--acc:#baff
 </div>
 
 <div class="page active" id="page-home">
+<div id="ambientDots"></div>
+<canvas id="ambientGlow"></canvas>
 <section id="hero">
   <div id="bg"><div class="stars"></div><canvas id="stars"></canvas><canvas id="cloudsCanvas"></canvas><canvas id="petalsCanvas"></canvas><canvas id="tendrilsCanvas"></canvas><canvas id="moonCanvas"></canvas><canvas id="grassCanvas"></canvas></div>
   <div id="sat"><canvas id="satCanvas"></canvas></div>
@@ -929,38 +925,6 @@ const $ = id => document.getElementById(id);
   })();
 })();
 
-
-// ---------------- Neon tendrils fixed to the viewport (visible on every page/section, not just the hero) ----------------
-(function () {
-  const c = document.getElementById("globalTendrils"); if (!c) return;
-  const gx = c.getContext("2d"), R = Math.min(window.devicePixelRatio || 1, 2);
-  function build() {
-    const W = c.width = innerWidth * R, H = c.height = innerHeight * R;
-    c.style.width = innerWidth + "px"; c.style.height = innerHeight + "px";
-    gx.clearRect(0, 0, W, H);
-    const TCOLOR = "186,255,57";
-    function grow(x, y, ang, len, depth) {
-      if (depth <= 0 || len < 6) return;
-      const steps = 4 + Math.floor(Math.random() * 4), stepLen = len / steps;
-      let cx = x, cy = y, a = ang;
-      for (let i = 0; i < steps; i++) {
-        a += (Math.random() - .5) * .7;
-        const nx = cx + Math.cos(a) * stepLen, ny = cy + Math.sin(a) * stepLen;
-        gx.lineWidth = Math.max(1, depth * .8) * R;
-        gx.strokeStyle = `rgba(${TCOLOR},.4)`;
-        gx.shadowColor = `rgba(${TCOLOR},.8)`; gx.shadowBlur = 4 * R;
-        gx.beginPath(); gx.moveTo(cx, cy); gx.lineTo(nx, ny); gx.stroke();
-        cx = nx; cy = ny;
-        if (Math.random() < .22 && depth > 1) grow(cx, cy, a + (Math.random() < .5 ? 1 : -1) * (.7 + Math.random() * .6), len * .5, depth - 1);
-      }
-      if (depth > 1) grow(cx, cy, a, len * .72, depth - 1);
-    }
-    [[0, H, -.35, W * .3], [W, H, Math.PI + .35, W * .3]].forEach(a => grow(a[0], a[1], a[2], a[3], 4));
-    gx.shadowBlur = 0;
-  }
-  build();
-  let t; addEventListener("resize", () => { clearTimeout(t); t = setTimeout(build, 200); });
-})();
 
 // ---------------- Ambient background: reactive dot-grid glow + drifting space-dust (whole page, all sections) ----------------
 (function () {
