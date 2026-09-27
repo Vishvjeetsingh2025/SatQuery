@@ -50,7 +50,8 @@ h2{font-size:1.1rem;margin-bottom:1rem}
 .a{align-self:flex-start;background:#ffffff0d;border:1px solid var(--line)}
 .chip{display:inline-block;font-size:.7rem;padding:2px 10px;border-radius:99px;background:#baff3933;color:var(--acc);margin-top:.6rem}
 .ev{color:var(--mut);font-size:.85rem;margin:.6rem 0 0 1rem}
-.rel{display:flex;gap:.5rem;margin-top:.7rem;flex-wrap:wrap}.rel div{width:74px;font-size:.7rem;text-align:center}.rel img{width:74px;height:74px;object-fit:cover;border-radius:8px;border:1px solid var(--acc)}
+.rel{display:flex;gap:.6rem;margin-top:.7rem;flex-wrap:wrap}.rel div{width:104px;font-size:.7rem;text-align:center}.rel img{width:104px;height:104px;object-fit:cover;border-radius:8px;border:1px solid var(--acc)}
+.maskBtn{width:100%;white-space:normal;line-height:1.25}
 .chg{display:flex;gap:.8rem;margin-top:.8rem;font-size:.82rem;color:var(--mut);align-items:center}.chg img{width:150px;border-radius:8px;border:1px solid #ff5050}
 .sb{display:flex;height:6px;border-radius:3px;overflow:hidden;margin:3px 0}.sb span{display:block}
 #stars{position:absolute;inset:0;width:100%;height:100%}
@@ -481,7 +482,11 @@ html:not([data-page]),html[data-page="home"],html[data-page="login"]{--acc:#baff
       <h2>💬 Ask SatQuery</h2>
       <div id="msgs"><div class="m a">Upload your images (for change detection, upload <b>oldest → newest</b>), then ask anything: land use, water, vegetation, urban growth, damage, or comparisons between images.</div></div>
       <div id="chips"></div>
-      <form id="f"><button type="button" class="mic-btn" id="micBtn" title="Voice input">🎤</button><input id="q" type="text" placeholder="e.g. Which images contain water bodies?" autocomplete="off"><button>Send</button></form>
+      <form id="f">
+        <button type="button" class="mic-btn" id="micBtn" title="Voice input">🎤</button>
+        <button type="button" class="mic-btn" id="micLang" title="Voice input language" style="width:auto;padding:0 .5rem!important;font-size:.68rem;font-weight:700">EN</button>
+        <input id="q" type="text" placeholder="e.g. Which images contain water bodies?" autocomplete="off"><button>Send</button>
+      </form>
     </div>
   </main>
 </div>
@@ -1366,12 +1371,14 @@ function initGlobe() {
   })();
 }
 
-// ==================== Voice input (Web Speech API, browser-native, no API key) ====================
+// ==================== Voice input (Web Speech API, browser-native, no API key) — English or Hindi ====================
 (function setupVoice() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { $("micBtn").style.display = "none"; return; }   // gracefully hide on unsupported browsers
+  if (!SR) { $("micBtn").style.display = "none"; $("micLang").style.display = "none"; return; }   // gracefully hide on unsupported browsers
   const rec = new SR();
-  rec.lang = "en-IN"; rec.interimResults = false; rec.maxAlternatives = 1;
+  const LANGS = [["en-IN", "EN"], ["hi-IN", "HI"]];
+  let langIdx = 0;
+  rec.lang = LANGS[langIdx][0]; rec.interimResults = false; rec.maxAlternatives = 1;
   let listening = false;
   rec.onresult = e => { $("q").value = e.results[0][0].transcript; };
   rec.onend = () => { listening = false; $("micBtn").classList.remove("on"); };
@@ -1380,6 +1387,10 @@ function initGlobe() {
     if (listening) { rec.stop(); return; }
     listening = true; $("micBtn").classList.add("on");
     try { rec.start(); } catch (e) { listening = false; $("micBtn").classList.remove("on"); }
+  };
+  $("micLang").onclick = () => {
+    langIdx = (langIdx + 1) % LANGS.length;
+    rec.lang = LANGS[langIdx][0]; $("micLang").textContent = LANGS[langIdx][1];
   };
 })();
 
@@ -1499,7 +1510,7 @@ function scanLoader() {
   return { el: wrap, stop: () => clearInterval(timer) };
 }
 
-["Which images contain water bodies?","Compare vegetation vs urban area","Any roads, buildings or airports?","Rank images by greenness"]
+["Which images contain water bodies?","Compare vegetation vs urban area","Any roads, buildings or airports?","Rank images by greenness","Auto-detect encroachments or new construction","Rate cloud/shadow quality of each image"]
   .forEach(t => { const b = document.createElement("button"); b.type="button"; b.textContent=t; b.onclick=()=>{$("q").value=t;$("f").requestSubmit()}; $("chips").append(b); });
 
 function renderGrid() {
@@ -1546,11 +1557,27 @@ $("f").onsubmit = async e => {
     const rel = (d.relevant_images || []).filter(i => Number.isInteger(i) && i >= 1 && i <= files.length);
     const seg = m => m ? `<div class="sb" title="green=vegetation, blue=water, grey=built/bare, tan=other"><span style="width:${m.vegetation}%;background:#3fbf5f"></span><span style="width:${m.water}%;background:#3d8bff"></span><span style="width:${m.built_or_bare}%;background:#9aa0b5"></span><span style="width:${m.other}%;background:#c9a26a"></span></div>` : "";
     let rest = "";
-    (d.changes || []).forEach(c => { rest += `<div class="chg"><img src="data:image/jpeg;base64,${c.overlay}"><div><b style="color:var(--tx)">Image ${c.pair[0]} → ${c.pair[1]}</b><br>Changed area: <b class="cu" style="color:#ff7070" data-target="${c.changed_pct}">0.0%</b><br>${Object.entries(c.transitions).map(([k, v]) => `${k.replace(/_/g, " ")}: +${v.gain_pct}% / −${v.loss_pct}%`).join("<br>")}</div></div>`; });
+    (d.changes || []).forEach(c => {
+      let carbonHtml = "";
+      if (c.carbon_estimate) {
+        const ce = c.carbon_estimate;
+        carbonHtml = `<div style="margin-top:.5rem;padding-top:.5rem;border-top:1px dashed var(--line);font-size:.78rem;color:var(--mut)">
+          🌳 Est. <b style="color:var(--tx)">${ce.hectares_lost_est} ha</b> vegetation lost ≈
+          <b style="color:var(--tx)">${ce.carbon_tons_est} tons CO₂</b> (~$${ce.value_usd_est})
+          <span title="${esc(ce.note)}" style="cursor:help;opacity:.7">ℹ️</span></div>`;
+      }
+      rest += `<div class="chg"><img src="data:image/jpeg;base64,${c.overlay}"><div><b style="color:var(--tx)">Image ${c.pair[0]} → ${c.pair[1]}</b><br>Changed area: <b class="cu" style="color:#ff7070" data-target="${c.changed_pct}">0.0%</b><br>${Object.entries(c.transitions).map(([k, v]) => `${k.replace(/_/g, " ")}: +${v.gain_pct}% / −${v.loss_pct}%`).join("<br>")}${carbonHtml}</div></div>`;
+    });
     rest += `<br><span class="chip">Confidence: ${esc(d.confidence || "?")}</span>`;
     if (d.history_id) rest += `<a class="rpt-link" href="/api/report/${d.history_id}" target="_blank">📥 Download PDF report</a>`;
     if ((d.observations || []).length) rest += `<ul class="ev">${d.observations.map(o => `<li>${esc(o)}</li>`).join("")}</ul>`;
-    if (rel.length) rest += `<div class="rel">${rel.map(i => `<div><img src="${URL.createObjectURL(files[i-1])}">${seg((d.measurements||[])[i-1])}Image ${i}</div>`).join("")}</div>`;
+    if (rel.length) rest += `<div class="rel">${rel.map(i => `
+      <div class="relItem" data-idx="${i}">
+        <img class="relImg" src="${URL.createObjectURL(files[i-1])}">
+        ${seg((d.measurements||[])[i-1])}Image ${i}
+        <button type="button" class="smallbtn maskBtn" data-idx="${i}" data-showing="orig"
+          style="display:block;margin-top:.4rem;font-size:.66rem;padding:.25rem .55rem">🛰️ Show Spectral Mask</button>
+      </div>`).join("")}</div>`;
 
     wait.innerHTML = "";
     const typeTarget = document.createElement("div"); wait.appendChild(typeTarget);
@@ -1560,6 +1587,27 @@ $("f").onsubmit = async e => {
       restArea.innerHTML = rest;
       restArea.querySelectorAll(".cu[data-target]").forEach(el => animateCount(el, parseFloat(el.dataset.target)));
       document.querySelectorAll(".th").forEach((el, i) => el.classList.toggle("hit", rel.includes(i + 1)));
+      restArea.querySelectorAll(".maskBtn").forEach(btn => {
+        btn.onclick = async () => {
+          const idx = +btn.dataset.idx;
+          const img = restArea.querySelector(`.relItem[data-idx="${idx}"] .relImg`);
+          if (btn.dataset.showing === "mask") {
+            img.src = URL.createObjectURL(files[idx - 1]);
+            btn.textContent = "🛰️ Show Spectral Mask"; btn.dataset.showing = "orig";
+            return;
+          }
+          btn.disabled = true; const oldTxt = btn.textContent; btn.textContent = "Computing…";
+          try {
+            const fd2 = new FormData(); fd2.append("file", files[idx - 1]);
+            const r2 = await fetch("/api/mask", { method: "POST", body: fd2 });
+            if (!r2.ok) throw new Error("mask service unavailable");
+            const blob = await r2.blob();
+            img.src = URL.createObjectURL(blob);
+            btn.textContent = "↩️ Show Original"; btn.dataset.showing = "mask";
+          } catch (e2) { alert("Could not compute mask: " + e2.message); btn.textContent = oldTxt; }
+          btn.disabled = false;
+        };
+      });
       $("msgs").scrollTop = 1e9;
     });
     history.push({ role: "user", text: q }, { role: "assistant", text: d.answer || "" });

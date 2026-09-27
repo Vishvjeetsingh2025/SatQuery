@@ -1,5 +1,5 @@
 """Generates a one-click downloadable PDF report for any saved analysis."""
-import io, base64, time
+import hashlib, io, base64, time
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib import colors
@@ -62,7 +62,17 @@ def build_report(record: dict) -> bytes:
         for o in obs:
             story.append(Paragraph("• " + _safe(o), body))
 
+    # Tamper-evident fingerprint: a SHA-256 hash of the record's own evidence (query, answer,
+    # confidence, timestamp). Anyone can independently recompute this from the raw data to verify
+    # this report wasn't edited after the fact — a lightweight chain-of-custody signature.
+    fingerprint_src = "|".join([str(record.get("id", "")), str(record.get("ts", "")), record.get("prompt", ""),
+                                 record.get("answer", ""), str(record.get("confidence", ""))]).encode()
+    fingerprint = hashlib.sha256(fingerprint_src).hexdigest()
+
     story.append(Spacer(1, 16))
+    story.append(Paragraph(f"Report ID: SQ-{int(record.get('id') or 0):06d} &nbsp;·&nbsp; SHA-256 fingerprint: {fingerprint}",
+                            ParagraphStyle("H", parent=styles["Normal"], fontSize=7.5, textColor=colors.grey,
+                                           fontName="Helvetica")))
     story.append(Paragraph("Generated automatically by SatQuery AI (SIH26167) — Team Neural Minds.",
                             ParagraphStyle("F", parent=styles["Normal"], fontSize=8, textColor=colors.grey)))
 

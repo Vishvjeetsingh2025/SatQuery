@@ -24,6 +24,21 @@ def masks(a):
     return dict(vegetation=veg, water=water, built_or_bare=built, other=other, cloud_or_bright=cloud)
 
 
+def mask_overlay(im, alpha=0.45):
+    """Colour-codes the same classical-CV land-cover mask used for the % measurements, so a
+    person can visually verify the numbers came from real pixel classification, not a guess.
+    green=vegetation, blue=water, grey=built/bare, white=cloud/bright."""
+    a = _arr(im, size=768)
+    m = masks(a)
+    out = a.astype(np.float32)
+    colors = {"vegetation": (40, 200, 80), "water": (60, 140, 255),
+              "built_or_bare": (170, 170, 180), "cloud_or_bright": (255, 255, 255)}
+    for k, color in colors.items():
+        sel = m[k]
+        out[sel] = out[sel] * (1 - alpha) + np.array(color, dtype=np.float32) * alpha
+    return Image.fromarray(out.astype(np.uint8)).resize(im.size)
+
+
 def stats(im):
     a = _arr(im)
     out = {k: round(100 * float(m.mean()), 1) for k, m in masks(a).items()}
