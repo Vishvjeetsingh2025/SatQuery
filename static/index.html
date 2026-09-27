@@ -478,11 +478,15 @@ html:not([data-page]),html[data-page="home"],html[data-page="login"]{--acc:#baff
 
 <div class="page" id="page-map">
   <div class="page-head"><h2>🗺️ Map Explorer</h2><p>Click anywhere on Earth to pull real satellite imagery of that exact spot — then send it straight to the Analyst or save it as a Watchlist baseline. No screenshots, no Google Earth needed.</p></div>
+  <div style="display:flex;gap:8px;margin:0 0 14px">
+    <input type="text" id="mapSearchInput" placeholder="Search a place… e.g. Eiffel Tower, Paris">
+    <button type="button" class="go2" id="mapSearchBtn" style="width:auto;white-space:nowrap">🔎 Search</button>
+  </div>
   <div class="map-wrap">
     <div id="leafletMap"></div>
     <div class="map-side">
       <h3>📍 Selected location</h3>
-      <div class="coords" id="mapCoords">Click on the map to drop a pin…</div>
+      <div class="coords" id="mapCoords">Click on the map, or search a place name above…</div>
       <div class="place" id="mapPlace"></div>
       <div class="osmcredit">Basemap: Esri World Imagery · Place lookup: OpenStreetMap Nominatim</div>
       <div>
@@ -1122,6 +1126,27 @@ renderRoute();
 // ==================== Map Explorer: click anywhere on Earth → real satellite imagery ====================
 let mapInitialized = false, leafletMap = null, mapMarker = null, clickedLat = null, clickedLon = null, lastImgBlob = null;
 
+// Fetch with a hard timeout: without this, a slow/unresponsive Nominatim or Esri endpoint just hangs the
+// button forever with no error, which is the "sometimes it freezes" behaviour — this guarantees it always
+// resolves one way or another within a few seconds.
+async function fetchTimeout(url, ms = 12000) {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), ms);
+  try { return await fetch(url, { signal: ctrl.signal }); }
+  finally { clearTimeout(id); }
+}
+
+function selectLocation(lat, lon, placeName) {
+  clickedLat = lat; clickedLon = lon;
+  if (mapMarker) leafletMap.removeLayer(mapMarker);
+  mapMarker = L.marker([lat, lon]).addTo(leafletMap);
+  $("mapCoords").textContent = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+  $("mapPlace").textContent = placeName || "Unnamed location";
+  $("mapPreview").style.display = "none"; lastImgBlob = null;
+  $("mapUseBtn").disabled = true; $("mapWlBtn").disabled = true;
+  $("mapFetchBtn").disabled = false;
+}
+
 function initMap() {
   if (mapInitialized) { setTimeout(() => leafletMap && leafletMap.invalidateSize(), 60); return; }
   if (!window.L) { setTimeout(initMap, 200); return; }   // Leaflet script (deferred) may still be loading
@@ -1135,20 +1160,33 @@ function initMap() {
 }
 
 async function onMapClick(e) {
-  clickedLat = e.latlng.lat; clickedLon = e.latlng.lng;
-  if (mapMarker) leafletMap.removeLayer(mapMarker);
-  mapMarker = L.marker([clickedLat, clickedLon]).addTo(leafletMap);
-  $("mapCoords").textContent = `${clickedLat.toFixed(5)}, ${clickedLon.toFixed(5)}`;
-  $("mapPlace").textContent = "Looking up place name…";
-  $("mapPreview").style.display = "none"; lastImgBlob = null;
-  $("mapUseBtn").disabled = true; $("mapWlBtn").disabled = true;
-  $("mapFetchBtn").disabled = false;
+  selectLocation(e.latlng.lat, e.latlng.lng, "Looking up place name…");
   try {
-    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${clickedLat}&lon=${clickedLon}&zoom=14`);
+    const r = await fetchTimeout(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${e.latlng.lat}&lon=${e.latlng.lng}&zoom=14`);
     const d = await r.json();
     $("mapPlace").textContent = d.display_name || "Unnamed location";
   } catch (err) { $("mapPlace").textContent = "(place lookup unavailable)"; }
 }
+
+// Search a place by name → geocode it, fly the map there, and drop a pin (the reverse of clicking:
+// instead of pointing on the map to get coordinates, type a name to get its coordinates).
+$("mapSearchBtn").onclick = async () => {
+  const q = $("mapSearchInput").value.trim();
+  if (!q) return;
+  if (!mapInitialized) initMap();
+  $("mapSearchBtn").disabled = true; $("mapSearchBtn").textContent = "Searching…";
+  try {
+    const r = await fetchTimeout(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`);
+    if (!r.ok) throw new Error("lookup service unavailable");
+    const d = await r.json();
+    if (!d.length) { alert("Couldn't find that place — try a more specific name."); return; }
+    const lat = parseFloat(d[0].lat), lon = parseFloat(d[0].lon);
+    leafletMap.setView([lat, lon], 14);
+    selectLocation(lat, lon, d[0].display_name);
+  } catch (err) { alert(err.name === "AbortError" ? "Search timed out — try again." : "Search failed: " + err.message); }
+  $("mapSearchBtn").disabled = false; $("mapSearchBtn").textContent = "🔎 Search";
+};
+$("mapSearchInput").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("mapSearchBtn").click(); } });
 
 $("mapFetchBtn").onclick = async () => {
   if (clickedLat === null) return;
@@ -1157,13 +1195,13 @@ $("mapFetchBtn").onclick = async () => {
   const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bbox}&bboxSR=4326&imageSR=4326&size=640,640&format=png32&f=image`;
   $("mapFetchBtn").disabled = true; $("mapFetchBtn").textContent = "Fetching imagery…";
   try {
-    const r = await fetch(url);
+    const r = await fetchTimeout(url);
     if (!r.ok) throw new Error("imagery service unavailable");
     lastImgBlob = await r.blob();
     $("mapPreview").src = URL.createObjectURL(lastImgBlob);
     $("mapPreview").style.display = "block";
     $("mapUseBtn").disabled = false; $("mapWlBtn").disabled = false;
-  } catch (err) { alert("Could not fetch imagery: " + err.message); }
+  } catch (err) { alert(err.name === "AbortError" ? "Imagery fetch timed out — try again." : "Could not fetch imagery: " + err.message); }
   $("mapFetchBtn").disabled = false; $("mapFetchBtn").textContent = "📡 Fetch satellite image here";
 };
 
