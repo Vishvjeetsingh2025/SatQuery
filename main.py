@@ -214,4 +214,6 @@ async def watchlist_check(watchlist_id: int, file: UploadFile = File(...), user_
 
 @app.get("/")
 def index():
-    return FileResponse("static/index.html")
+    # no-store: this is a single-file SPA, so the browser must always fetch the latest
+    # index.html after every deploy instead of silently reusing a stale cached copy
+    return FileResponse("static/index.html", headers={"Cache-Control": "no-store, must-revalidate"})
