@@ -117,7 +117,7 @@ def list_history(user_id, limit=30):
     return [dict(r) for r in rows]
 
 
-def get_history(hid, user_id=None):
+def get_history(hid, user_id=None, public=False):
     c = _conn()
     r = c.execute("SELECT * FROM history WHERE id=?", (hid,)).fetchone()
     c.close()
@@ -125,7 +125,9 @@ def get_history(hid, user_id=None):
     d = dict(r); d["observations"] = json.loads(d.get("observations") or "[]")
     # ownership check: only the owner can fetch/report a logged-in history entry;
     # entries saved without a login (user_id NULL) stay publicly viewable
-    if d.get("user_id") is not None and user_id != d.get("user_id"):
+    # public=True is used only for the shareable PDF report link ("anyone with the link can view",
+    # like a Google Doc link) so a QR code scanned on another device works without logging in
+    if not public and d.get("user_id") is not None and user_id != d.get("user_id"):
         return None
     return d
 

@@ -11,8 +11,18 @@ NAVY = colors.HexColor("#1F3864")
 LIGHTBG = colors.HexColor("#F2F5FA")
 
 
+def _s(x, default=""):
+    """dict.get(key, default) only falls back when the KEY is missing — a stored NULL/None value
+    for a present key still comes through as None and breaks str-only operations downstream.
+    This normalises both cases to a safe string."""
+    return default if x is None else str(x)
+
+
 def build_report(record: dict) -> bytes:
     """record: a dict from db.get_history() (prompt, answer, confidence, intent, thumb_b64, observations, ts)."""
+    record = {**record,
+              "prompt": _s(record.get("prompt")), "intent": _s(record.get("intent"), "-"),
+              "answer": _s(record.get("answer")), "confidence": _s(record.get("confidence"), "-")}
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=18 * mm, bottomMargin=18 * mm,
                              leftMargin=18 * mm, rightMargin=18 * mm, title="SatQuery AI Report")

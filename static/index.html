@@ -92,6 +92,24 @@ form button{border:0;border-radius:12px;padding:0 1.4rem;color:#fff;font-weight:
 .smallbtn{font-size:.72rem;padding:.3rem .7rem;border-radius:8px;border:1px solid var(--line);background:#ffffff0d;color:var(--tx);cursor:pointer}
 .smallbtn:hover{border-color:var(--acc)}
 .rpt-link{font-size:.72rem;color:var(--acc);text-decoration:none;margin-left:.6rem}
+.act-btn{font-size:.72rem;color:var(--acc);background:none;border:0;cursor:pointer;margin-left:.6rem;padding:0}
+.act-btn:hover{text-decoration:underline}
+.qr-pop{display:none;margin-top:.6rem;padding:.7rem;background:#fff;border-radius:12px;width:max-content;max-width:100%}
+.qr-pop img{display:block;width:150px;height:150px}
+.qr-pop small{display:block;color:#222;font-size:.65rem;text-align:center;margin-top:.3rem}
+.bench{margin-top:.4rem;font-size:.7rem;color:var(--mut);line-height:1.45}
+#tlModal{position:fixed;inset:0;z-index:130;display:none;align-items:center;justify-content:center;flex-direction:column;
+  background:#000000ee;backdrop-filter:blur(6px);gap:1rem}
+#tlModal.show{display:flex}
+.tl-stage{position:relative;width:min(78vw,78vh);height:min(78vw,78vh);border-radius:16px;overflow:hidden;
+  border:1px solid var(--line);box-shadow:0 0 60px -10px var(--acc)}
+.tl-stage img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .9s ease}
+.tl-stage img.on{opacity:1}
+.tl-label{position:absolute;left:12px;top:12px;background:#000a;color:#fff;font-weight:700;font-size:.85rem;padding:.3rem .7rem;border-radius:99px;z-index:2}
+.tl-bar{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;justify-content:center}
+.tl-dots{display:flex;gap:.35rem}
+.tl-dots i{width:9px;height:9px;border-radius:50%;background:#ffffff33;cursor:pointer;transition:.3s}
+.tl-dots i.on{background:var(--acc);box-shadow:0 0 10px var(--acc)}
 
 /* ---------- Auth (dedicated Login page card) ---------- */
 .authCard{width:min(380px,90vw);background:linear-gradient(180deg,#10201a,#070f0a);border:1px solid var(--line);
@@ -476,6 +494,7 @@ html:not([data-page]),html[data-page="home"],html[data-page="login"]{--acc:#baff
         <div id="drop">Drop up to 16 satellite images here or click to browse</div>
         <input id="file" type="file" accept="image/*" multiple hidden>
         <div id="grid"></div>
+        <button type="button" class="smallbtn" id="tlBtn" style="margin-top:.8rem" disabled>▶️ Time Machine (play timelapse)</button>
       </div>
     </div>
     <div class="panel" id="chat">
@@ -561,6 +580,18 @@ html:not([data-page]),html[data-page="home"],html[data-page="login"]{--acc:#baff
 </div>
 
 </div><!-- /pages -->
+
+<div id="tlModal">
+  <div class="tl-stage" id="tlStage"><div class="tl-label" id="tlLabel">Image 1</div></div>
+  <div class="tl-bar">
+    <button type="button" class="smallbtn" id="tlPrev">⏮</button>
+    <button type="button" class="smallbtn" id="tlPlay">⏸ Pause</button>
+    <button type="button" class="smallbtn" id="tlNext">⏭</button>
+    <select id="tlSpeed" class="smallbtn"><option value="1800">Slow</option><option value="1100" selected>Normal</option><option value="600">Fast</option></select>
+    <button type="button" class="smallbtn" id="tlClose">✕ Close</button>
+  </div>
+  <div class="tl-dots" id="tlDots"></div>
+</div>
 
 <div id="cmdk">
   <div class="cmdk-box">
@@ -1394,6 +1425,54 @@ function initGlobe() {
   };
 })();
 
+// ==================== Voice OUTPUT: the AI reads its answer aloud (browser-native speechSynthesis) ====================
+function speakText(text, btn) {
+  if (!("speechSynthesis" in window)) { alert("Text-to-speech isn't supported in this browser."); return; }
+  if (speechSynthesis.speaking) { speechSynthesis.cancel(); if (btn) btn.textContent = "🔊 Read aloud"; return; }
+  const clean = text.replace(/\*\*/g, "").replace(/\s+/g, " ").trim();
+  if (!clean) return;
+  const u = new SpeechSynthesisUtterance(clean);
+  u.lang = /[\u0900-\u097F]/.test(clean) ? "hi-IN" : "en-IN";   // Devanagari → Hindi voice, else English
+  u.rate = 1;
+  u.onend = u.onerror = () => { if (btn) btn.textContent = "🔊 Read aloud"; };
+  if (btn) btn.textContent = "⏹ Stop";
+  speechSynthesis.speak(u);
+}
+
+// ==================== Time Machine: auto-play timelapse of the uploaded images ====================
+(function setupTimeMachine() {
+  let idx = 0, timer = null, playing = true, urls = [];
+  const stage = $("tlStage");
+  function build() {
+    urls.forEach(u => URL.revokeObjectURL(u));
+    urls = files.map(f => URL.createObjectURL(f));
+    stage.querySelectorAll("img").forEach(i => i.remove());
+    urls.forEach((u, i) => { const im = document.createElement("img"); im.src = u; if (i === 0) im.className = "on"; stage.appendChild(im); });
+    $("tlDots").innerHTML = urls.map((_, i) => `<i data-i="${i}"></i>`).join("");
+    $("tlDots").querySelectorAll("i").forEach(d => d.onclick = () => { show(+d.dataset.i); restart(); });
+  }
+  function show(i) {
+    idx = (i + urls.length) % urls.length;
+    stage.querySelectorAll("img").forEach((im, k) => im.classList.toggle("on", k === idx));
+    $("tlDots").querySelectorAll("i").forEach((d, k) => d.classList.toggle("on", k === idx));
+    $("tlLabel").textContent = `Image ${idx + 1} of ${urls.length}`;
+  }
+  function restart() { clearInterval(timer); if (playing) timer = setInterval(() => show(idx + 1), +$("tlSpeed").value); }
+  $("tlBtn").onclick = () => {
+    if (files.length < 2) return;
+    build(); idx = 0; playing = true; $("tlPlay").textContent = "⏸ Pause";
+    $("tlModal").classList.add("show"); show(0); restart();
+  };
+  $("tlPlay").onclick = () => { playing = !playing; $("tlPlay").textContent = playing ? "⏸ Pause" : "▶️ Play"; restart(); };
+  $("tlPrev").onclick = () => { show(idx - 1); restart(); };
+  $("tlNext").onclick = () => { show(idx + 1); restart(); };
+  $("tlSpeed").onchange = restart;
+  const close = () => { clearInterval(timer); $("tlModal").classList.remove("show"); };
+  $("tlClose").onclick = close;
+  $("tlModal").onclick = e => { if (e.target.id === "tlModal") close(); };
+  addEventListener("keydown", e => { if (e.key === "Escape" && $("tlModal").classList.contains("show")) close(); });
+})();
+
 // ==================== Dashboard: aggregate view across Watchlist + History ====================
 async function loadDashboard() {
   if (!authToken) return;
@@ -1515,6 +1594,7 @@ function scanLoader() {
 
 function renderGrid() {
   $("count").textContent = `(${files.length}/16)`;
+  if ($("tlBtn")) $("tlBtn").disabled = files.length < 2;
   $("grid").innerHTML = "";
   files.forEach((f, i) => {
     const d = document.createElement("div"); d.className = "th";
@@ -1566,10 +1646,19 @@ $("f").onsubmit = async e => {
           <b style="color:var(--tx)">${ce.carbon_tons_est} tons CO₂</b> (~$${ce.value_usd_est})
           <span title="${esc(ce.note)}" style="cursor:help;opacity:.7">ℹ️</span></div>`;
       }
+      if (c.benchmark) {
+        const b = c.benchmark;
+        carbonHtml += `<div class="bench">📊 <b style="color:var(--tx)">Reference context:</b> ${esc(b.text)}
+          This scene shows ~${b.scene_veg_loss_pct}% of its area shifting away from vegetation.
+          <i>${esc(b.caveat)}</i> Source: ${esc(b.source)}.</div>`;
+      }
       rest += `<div class="chg"><img src="data:image/jpeg;base64,${c.overlay}"><div><b style="color:var(--tx)">Image ${c.pair[0]} → ${c.pair[1]}</b><br>Changed area: <b class="cu" style="color:#ff7070" data-target="${c.changed_pct}">0.0%</b><br>${Object.entries(c.transitions).map(([k, v]) => `${k.replace(/_/g, " ")}: +${v.gain_pct}% / −${v.loss_pct}%`).join("<br>")}${carbonHtml}</div></div>`;
     });
     rest += `<br><span class="chip">Confidence: ${esc(d.confidence || "?")}</span>`;
-    if (d.history_id) rest += `<a class="rpt-link" href="/api/report/${d.history_id}" target="_blank">📥 Download PDF report</a>`;
+    if (d.history_id) rest += `<a class="rpt-link" href="/api/report/${d.history_id}" target="_blank">📥 Download PDF report</a>
+      <button type="button" class="act-btn qrBtn" data-id="${d.history_id}">📱 QR</button>
+      <button type="button" class="act-btn speakBtn">🔊 Read aloud</button>
+      <div class="qr-pop"><img alt="QR code for this report"><small>Scan to open this report on your phone</small></div>`;
     if ((d.observations || []).length) rest += `<ul class="ev">${d.observations.map(o => `<li>${esc(o)}</li>`).join("")}</ul>`;
     if (rel.length) rest += `<div class="rel">${rel.map(i => `
       <div class="relItem" data-idx="${i}">
@@ -1587,6 +1676,15 @@ $("f").onsubmit = async e => {
       restArea.innerHTML = rest;
       restArea.querySelectorAll(".cu[data-target]").forEach(el => animateCount(el, parseFloat(el.dataset.target)));
       document.querySelectorAll(".th").forEach((el, i) => el.classList.toggle("hit", rel.includes(i + 1)));
+      const qrBtn = restArea.querySelector(".qrBtn");
+      if (qrBtn) qrBtn.onclick = () => {
+        const pop = restArea.querySelector(".qr-pop");
+        if (pop.style.display === "block") { pop.style.display = "none"; return; }
+        pop.querySelector("img").src = `/api/report/${qrBtn.dataset.id}/qr?t=${Date.now()}`;
+        pop.style.display = "block";
+      };
+      const spBtn = restArea.querySelector(".speakBtn");
+      if (spBtn) spBtn.onclick = () => speakText(d.answer || "", spBtn);
       restArea.querySelectorAll(".maskBtn").forEach(btn => {
         btn.onclick = async () => {
           const idx = +btn.dataset.idx;

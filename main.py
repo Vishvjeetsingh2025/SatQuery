@@ -1,10 +1,11 @@
 import base64, hashlib, hmac, io, json, os, re, secrets  # hashlib also used by the demo-response cache below
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, Response
 from PIL import Image
 from google import genai
 from google.genai import types
 import analytics as an
+import qrcode
 import db
 import report as rpt
 
@@ -153,6 +154,25 @@ def _carbon_estimate(changed_pct: float, transitions: dict) -> dict | None:
                     "(not a certified carbon audit)."}
 
 
+# Reference context from a real, checkable government source. Deliberately NOT turned into a
+# "N times the national average" multiplier: the two metrics differ (share of a scene vs. % of a
+# state's forest cover), so we present it as context with the source named, not as a fake-precise ratio.
+ISFR_CONTEXT = {
+    "source": "India State of Forest Report (ISFR) 2021, Forest Survey of India",
+    "range_pct": [0.39, 1.88],
+    "text": "ISFR 2021 reported state-wise forest-cover declines of about 0.39%–1.88% in North-East Indian states "
+            "between assessment cycles.",
+    "caveat": "Context only — different metric and region from this scene; not a like-for-like comparison.",
+}
+
+
+def _benchmark_context(transitions: dict) -> dict | None:
+    veg_loss = transitions.get("vegetation", {}).get("loss_pct", 0)
+    if veg_loss <= 0:
+        return None
+    return {**ISFR_CONTEXT, "scene_veg_loss_pct": round(veg_loss, 1)}
+
+
 @app.post("/api/query")
 async def query(prompt: str = Form(...), history: str = Form("[]"), files: list[UploadFile] = File(...),
                  authorization: str = Header(None)):
@@ -197,7 +217,8 @@ async def query(prompt: str = Form(...), history: str = Form("[]"), files: list[
             data["measurements"] = meas
             data["changes"] = [{"pair": c["pair"], "changed_pct": c["changed_pct"],
                                 "transitions": c["transitions"], "overlay": b64(c["overlay"]),
-                                "carbon_estimate": _carbon_estimate(c["changed_pct"], c["transitions"])}
+                                "carbon_estimate": _carbon_estimate(c["changed_pct"], c["transitions"]),
+                                "benchmark": _benchmark_context(c["transitions"])}
                                 for c in changes]
 
             if len(_response_cache) >= _CACHE_MAX:
@@ -233,13 +254,34 @@ def api_history_list(user_id: int = Depends(current_user_id)):
 
 
 @app.get("/api/report/{history_id}")
-def api_report(history_id: int, user_id: int | None = Depends(optional_user_id)):
-    record = db.get_history(history_id, user_id)
+def api_report(history_id: int):
+    # Shareable by link (history list itself stays private per account) so QR scans on another device work
+    record = db.get_history(history_id, public=True)
     if not record:
-        return JSONResponse({"error": "Not found, or this report belongs to a different account"}, status_code=404)
+        return JSONResponse({"error": "Report not found"}, status_code=404)
     pdf_bytes = rpt.build_report(record)
+    # "inline" (not "attachment") so clicking the link opens the PDF directly in the browser tab's
+    # built-in viewer, instead of silently triggering a background download with no visible result
     return Response(content=pdf_bytes, media_type="application/pdf",
-                     headers={"Content-Disposition": f'attachment; filename="satquery_report_{history_id}.pdf"'})
+                     headers={"Content-Disposition": f'inline; filename="satquery_report_{history_id}.pdf"'})
+
+
+def _public_base_url(request: Request) -> str:
+    """Behind Render's proxy request.base_url can come back as http://; prefer forwarded headers
+    so the QR code always encodes the real public https URL a phone can open."""
+    proto = request.headers.get("x-forwarded-proto", request.url.scheme)
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or request.url.netloc
+    return f"{proto}://{host}"
+
+
+@app.get("/api/report/{history_id}/qr")
+def api_report_qr(history_id: int, request: Request):
+    if not db.get_history(history_id, public=True):
+        return JSONResponse({"error": "Report not found"}, status_code=404)
+    url = f"{_public_base_url(request)}/api/report/{history_id}"
+    img = qrcode.make(url, box_size=8, border=2)
+    buf = io.BytesIO(); img.save(buf, format="PNG")
+    return Response(content=buf.getvalue(), media_type="image/png", headers={"Cache-Control": "no-store"})
 
 
 # ---------------- Watchlist (requires login: each account has its own private watchlist) ----------------
