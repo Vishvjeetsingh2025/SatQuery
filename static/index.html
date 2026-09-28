@@ -52,8 +52,6 @@ h2{font-size:1.1rem;margin-bottom:1rem}
 .ev{color:var(--mut);font-size:.85rem;margin:.6rem 0 0 1rem}
 .rel{display:flex;gap:.6rem;margin-top:.7rem;flex-wrap:wrap}.rel div{width:104px;font-size:.7rem;text-align:center}.rel img{width:104px;height:104px;object-fit:cover;border-radius:8px;border:1px solid var(--acc)}
 .maskBtn{width:100%;white-space:normal;line-height:1.25}
-.xwarn{margin-top:.6rem;padding:.5rem .7rem;border-radius:8px;font-size:.78rem;line-height:1.45;border:1px solid}
-.xwarn.bad{background:#ff505020;border-color:#ff5050;color:#ffc0c0}.xwarn.mid{background:#ffb02020;border-color:#ffb020;color:#ffe0a8}.xwarn.ok{background:#3fbf5f1c;border-color:#3fbf5f;color:#b6f2c4}
 .chg{display:flex;gap:.8rem;margin-top:.8rem;font-size:.82rem;color:var(--mut);align-items:center}.chg img{width:150px;border-radius:8px;border:1px solid #ff5050}
 .sb{display:flex;height:6px;border-radius:3px;overflow:hidden;margin:3px 0}.sb span{display:block}
 #stars{position:absolute;inset:0;width:100%;height:100%}
@@ -99,6 +97,13 @@ form button{border:0;border-radius:12px;padding:0 1.4rem;color:#fff;font-weight:
 .qr-pop{display:none;margin-top:.6rem;padding:.7rem;background:#fff;border-radius:12px;width:max-content;max-width:100%}
 .qr-pop img{display:block;width:150px;height:150px}
 .qr-pop small{display:block;color:#222;font-size:.65rem;text-align:center;margin-top:.3rem}
+.trust{margin-top:.8rem;border:1px solid var(--line);border-radius:12px;padding:.7rem .85rem;background:#ffffff08;font-size:.75rem;line-height:1.5}
+.trust h4{font-size:.78rem;margin:0 0 .35rem;color:var(--tx);display:flex;align-items:center;gap:.4rem}
+.trust .row{display:flex;gap:.45rem;align-items:flex-start;color:var(--mut)}
+.trust .row b{color:var(--tx)}
+.trust .ok{color:#5cffa3}.trust .warn{color:#ffb648}.trust .bad{color:#ff6b6b}
+.warnbox{margin-top:.4rem;padding:.5rem .65rem;border-radius:8px;background:#ff6b6b18;border:1px solid #ff6b6b66;color:#ffb4b4;font-size:.75rem}
+.rng{color:var(--mut);font-size:.72rem}
 .bench{margin-top:.4rem;font-size:.7rem;color:var(--mut);line-height:1.45}
 #tlModal{position:fixed;inset:0;z-index:130;display:none;align-items:center;justify-content:center;flex-direction:column;
   background:#000000ee;backdrop-filter:blur(6px);gap:1rem}
@@ -496,6 +501,12 @@ html:not([data-page]),html[data-page="home"],html[data-page="login"]{--acc:#baff
         <div id="drop">Drop up to 16 satellite images here or click to browse</div>
         <input id="file" type="file" accept="image/*" multiple hidden>
         <div id="grid"></div>
+        <div style="margin-top:.8rem;font-size:.75rem;color:var(--mut)">
+          <label for="sceneKm2">Area covered by the images (optional, km²)</label>
+          <input id="sceneKm2" type="number" min="0" step="any" placeholder="e.g. 4 — from Google Earth's ruler"
+            style="width:100%;margin-top:.3rem;background:#ffffff0d;border:1px solid var(--line);border-radius:10px;padding:.5rem .7rem;color:var(--tx);font-size:.8rem;outline:none">
+          <div style="margin-top:.25rem;opacity:.75">Gives real hectares. Images captured in Map Explorer already carry exact geometry.</div>
+        </div>
         <button type="button" class="smallbtn" id="tlBtn" style="margin-top:.8rem" disabled>▶️ Time Machine (play timelapse)</button>
       </div>
     </div>
@@ -1116,7 +1127,6 @@ const $ = id => document.getElementById(id);
 })();
 
 let files = [], history = [];
-const fileAreas = new WeakMap();   // File -> real ground area (ha), known only for Map Explorer captures
 const esc = s => s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 const fmt = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\n/g, "<br>");
 
@@ -1198,7 +1208,7 @@ addEventListener("hashchange", renderRoute);
 renderRoute();
 
 // ==================== Map Explorer: click anywhere on Earth → real satellite imagery ====================
-let mapInitialized = false, leafletMap = null, mapMarker = null, clickedLat = null, clickedLon = null, lastImgBlob = null, labelsLayer = null;
+let mapInitialized = false, leafletMap = null, mapMarker = null, clickedLat = null, clickedLon = null, lastImgBlob = null, labelsLayer = null, lastDeg = 0.015;
 
 // Every network call on this page now goes through this — so a slow/unreachable service fails
 // after a few seconds with a clear message instead of leaving a button stuck forever.
@@ -1280,9 +1290,7 @@ $("mapFetchBtn").onclick = async () => {
   try {
     const r = await fetchWithTimeout(url, {}, 12000);
     if (!r.ok) throw new Error("imagery service unavailable");
-    lastImgBlob = await r.blob();
-    // exact ground area of THIS capture (bbox is ±deg around the pin) -> real hectares instead of a guess
-    lastCaptureAreaHa = (2 * deg * 111.32 * Math.cos(clickedLat * Math.PI / 180)) * (2 * deg * 111.32) * 100;
+    lastImgBlob = await r.blob(); lastDeg = deg;
     $("mapPreview").src = URL.createObjectURL(lastImgBlob);
     $("mapPreview").style.display = "block";
     $("mapUseBtn").disabled = false; $("mapWlBtn").disabled = false;
@@ -1290,11 +1298,9 @@ $("mapFetchBtn").onclick = async () => {
   $("mapFetchBtn").disabled = false; $("mapFetchBtn").textContent = "📡 Fetch satellite image here";
 };
 
-let lastCaptureAreaHa = null;
 $("mapUseBtn").onclick = () => {
   if (!lastImgBlob) return;
-  const file = new File([lastImgBlob], `map_${clickedLat.toFixed(4)}_${clickedLon.toFixed(4)}.png`, { type: "image/png" });
-  if (lastCaptureAreaHa) fileAreas.set(file, lastCaptureAreaHa);
+  const file = new File([lastImgBlob], `map_${clickedLat.toFixed(5)}_${clickedLon.toFixed(5)}_r${lastDeg}.png`, { type: "image/png" });
   addFiles([file]);
   location.hash = "#/analyst";
 };
@@ -1306,7 +1312,6 @@ $("mapWlBtn").onclick = async () => {
   const name = prompt("Name this watchlist area:", suggested);
   if (!name) return;
   const fd = new FormData(); fd.append("name", name);
-  if (lastCaptureAreaHa) fd.append("area_hectares", lastCaptureAreaHa.toFixed(3));
   fd.append("file", new File([lastImgBlob], "baseline.png", { type: "image/png" }));
   $("mapWlBtn").disabled = true; $("mapWlBtn").textContent = "Saving…";
   try {
@@ -1636,8 +1641,8 @@ $("f").onsubmit = async e => {
   const loader = scanLoader(); wait.appendChild(loader.el);
   const fd = new FormData();
   fd.append("prompt", q); fd.append("history", JSON.stringify(history));
+  const km2v = parseFloat($("sceneKm2").value); if (km2v > 0) fd.append("scene_km2", km2v);
   files.forEach(f => fd.append("files", f));
-  fd.append("areas", JSON.stringify(files.map(f => fileAreas.get(f) || null)));
   try {
     const r = await fetch("/api/query", { method: "POST", body: fd, headers: authHeaders() });
     const d = await r.json();
@@ -1648,15 +1653,10 @@ $("f").onsubmit = async e => {
     let rest = "";
     (d.changes || []).forEach(c => {
       let carbonHtml = "";
-      const lc = c.location_check || {};
-      if (lc.status === "different" || lc.status === "uncertain") {
-        const bad = lc.status === "different";
-        carbonHtml += `<div class="xwarn ${bad ? "bad" : "mid"}">${bad ? "⛔" : "⚠️"} <b>Location check:</b> ${esc(lc.message)}</div>`;
-      }
       if (c.carbon_estimate) {
         const ce = c.carbon_estimate;
-        carbonHtml += `<div style="margin-top:.5rem;padding-top:.5rem;border-top:1px dashed var(--line);font-size:.78rem;color:var(--mut)">
-          ${ce.area_source === "map" ? "📐 <b style='color:var(--tx)'>" + ce.area_ha + " ha</b> scene (exact map box) · " : ""}🌳 Est. <b style="color:var(--tx)">${ce.hectares_lost_est} ha</b> vegetation lost ≈
+        carbonHtml = `<div style="margin-top:.5rem;padding-top:.5rem;border-top:1px dashed var(--line);font-size:.78rem;color:var(--mut)">
+          🌳 <b style="color:var(--tx)">${ce.hectares_lost_est} ha</b> vegetation lost (real area: ${esc(ce.area_source)}) ≈
           <b style="color:var(--tx)">${ce.carbon_tons_est} tons CO₂</b> (~$${ce.value_usd_est})
           <span title="${esc(ce.note)}" style="cursor:help;opacity:.7">ℹ️</span></div>`;
       }
@@ -1666,19 +1666,39 @@ $("f").onsubmit = async e => {
           This scene shows ~${b.scene_veg_loss_pct}% of its area shifting away from vegetation.
           <i>${esc(b.caveat)}</i> Source: ${esc(b.source)}.</div>`;
       }
-      rest += `<div class="chg"><img src="data:image/jpeg;base64,${c.overlay}"><div><b style="color:var(--tx)">Image ${c.pair[0]} → ${c.pair[1]}</b><br>Changed area: <b class="cu" style="color:#ff7070" data-target="${c.changed_pct}">0.0%</b>${c.changed_range ? ` <span style="opacity:.8" title="Recomputed with the detection threshold nudged up/down — an honest error band">(range ${c.changed_range[0]}–${c.changed_range[1]}%)</span>` : ""}<br>${Object.entries(c.transitions).map(([k, v]) => `${k.replace(/_/g, " ")}: +${v.gain_pct}% / −${v.loss_pct}%`).join("<br>")}${carbonHtml}</div></div>`;
+      const L = c.location || {};
+      const notSame = L.status === "different";
+      const areaLine = notSame
+        ? `Changed area: <b style="color:#ffb648">not comparable</b>`
+        : `Changed area: <b class="cu" style="color:#ff7070" data-target="${c.changed_pct}">0.0%</b> <span class="rng">(sensitivity range ${c.changed_pct_low}–${c.changed_pct_high}%)</span>`;
+      const locNote = notSame
+        ? `<div class="warnbox">⚠️ These two images don't appear to show the same place (feature-match ratio ${L.ratio}), so the change figure was withheld.</div>`
+        : (L.status === "uncertain" ? `<div class="rng" style="margin-top:.3rem">⚠️ Couldn't verify these show the same place (low texture / little overlap).</div>` : "");
+      rest += `<div class="chg"><img src="data:image/jpeg;base64,${c.overlay}"><div><b style="color:var(--tx)">Image ${c.pair[0]} → ${c.pair[1]}</b><br>${areaLine}${locNote}<br>${Object.entries(c.transitions).map(([k, v]) => `${k.replace(/_/g, " ")}: +${v.gain_pct}% / −${v.loss_pct}%`).join("<br>")}${carbonHtml}</div></div>`;
     });
-    const cx = d.cross_check;
-    if (cx && cx.status === "mismatch") {
-      rest += `<div class="xwarn bad">⚠️ <b>AI and pixel-measurement mismatch</b> — ${cx.issues.map(i => `AI said <b>${esc(i.level)}</b> ${esc(i.class)} in Image ${i.image}, pixels measure <b>${i.pixels_measure_pct}%</b>`).join("; ")}. Confidence lowered.</div>`;
-    } else if (cx && cx.status === "ok") {
-      rest += `<div class="xwarn ok">✅ <b>Cross-checked:</b> ${cx.checked} AI claim${cx.checked > 1 ? "s" : ""} verified against pixel measurements.</div>`;
+    let trustHtml = "";
+    if (d.trust) {
+      const T = d.trust, px = T.pixel_check || {};
+      const rows = [];
+      if (px.status === "verified") rows.push(`<div class="row"><span class="ok">✔</span><span><b>AI vs pixels:</b> ${px.agreed}/${px.checked} checkable claims agree with the pixel measurements.</span></div>`);
+      else if (px.status === "mismatch") rows.push(`<div class="row"><span class="bad">✖</span><span><b>AI vs pixels — mismatch:</b> ${px.contradicted.map(x => `image ${x.image}: AI said <i>${esc(x.claimed)}</i> ${esc(x.kind)}, pixels measure ${x.measured_pct}%`).join("; ")}. Confidence was lowered.</span></div>`);
+      else rows.push(`<div class="row"><span class="warn">•</span><span><b>AI vs pixels:</b> no vegetation/water/cloud claims to check in this answer.</span></div>`);
+      (T.locations || []).forEach(l => {
+        const cls = l.status === "same" ? "ok" : (l.status === "different" ? "bad" : "warn");
+        const sym = l.status === "same" ? "✔" : (l.status === "different" ? "✖" : "•");
+        rows.push(`<div class="row"><span class="${cls}">${sym}</span><span><b>Same place, image ${l.pair[0]}→${l.pair[1]}:</b> ${l.status}${l.aligned ? " · auto-aligned (SIFT), overlap " + l.overlap_pct + "%" : ""}</span></div>`);
+      });
+      (d.area || []).forEach((a, i) => { if (a) rows.push(`<div class="row"><span class="ok">📏</span><span><b>Image ${i + 1} real scale:</b> ≈ ${a.area_ha.toLocaleString()} ha (${esc(a.source)}) · vegetation ≈ ${a.vegetation_ha} ha · water ≈ ${a.water_ha} ha</span></div>`); });
+      if (T.reasons && T.reasons.length && T.confidence_original !== T.confidence_adjusted)
+        rows.push(`<div class="row"><span class="warn">↓</span><span>Confidence ${esc(T.confidence_original)} → <b>${esc(T.confidence_adjusted)}</b>: ${esc(T.reasons.join("; "))}.</span></div>`);
+      trustHtml = `<div class="trust"><h4>🛡️ Trust Engine</h4>${rows.join("")}</div>`;
     }
-    rest += `<br><span class="chip">Confidence: ${esc(d.confidence || "?")}</span>${d.confidence_note ? ` <span style="font-size:.72rem;opacity:.7">${esc(d.confidence_note)}</span>` : ""}`;
+    rest += `<br><span class="chip">Confidence: ${esc(d.confidence || "?")}</span>`;
     if (d.history_id) rest += `<a class="rpt-link" href="/api/report/${d.history_id}" target="_blank">📥 Download PDF report</a>
       <button type="button" class="act-btn qrBtn" data-id="${d.history_id}">📱 QR</button>
       <button type="button" class="act-btn speakBtn">🔊 Read aloud</button>
       <div class="qr-pop"><img alt="QR code for this report"><small>Scan to open this report on your phone</small></div>`;
+    rest += trustHtml;
     if ((d.observations || []).length) rest += `<ul class="ev">${d.observations.map(o => `<li>${esc(o)}</li>`).join("")}</ul>`;
     if (rel.length) rest += `<div class="rel">${rel.map(i => `
       <div class="relItem" data-idx="${i}">
@@ -1766,22 +1786,15 @@ async function loadWatchlist() {
     $("wlList").innerHTML = rows.map(w => {
       let alertHtml = "";
       if (w.last_check_ts) {
-        const pct = (w.last_changed_pct ?? 0).toFixed(1) + (w.last_range ? ` (range ${w.last_range[0]}–${w.last_range[1]}%)` : "");
-        alertHtml = w.last_loc_status === "different"
-          ? `<div class="xwarn bad">⛔ The last image doesn't look like this location — result not reliable, no alert raised.</div>`
-          : w.last_alert
+        const pct = (w.last_changed_pct ?? 0).toFixed(1);
+        alertHtml = w.last_alert
           ? `<div class="alertbox on pulseIn">⚠️ Alert: ${pct}% change detected since baseline!</div>`
           : `<div class="alertbox off">✅ No major change (${pct}%) — within normal range.</div>`;
-        if (w.last_impact && w.last_loc_status !== "different") {
-          const im = w.last_impact;
-          alertHtml += `<div class="xwarn mid">🌳 Est. <b>${im.hectares_lost_est} ha</b> vegetation lost ≈ <b>${im.carbon_tons_est} tCO₂</b> (~$${im.value_usd_est}) · ${im.area_source === "map" ? "real area from map box" : "area assumed"}</div>`;
-        }
       }
       return `<div class="wl-item">
         <div class="top"><b>${esc(w.name)}</b>
           <button type="button" class="smallbtn" data-check="${w.id}">Check new image</button>
         </div>
-        ${w.area_hectares ? `<div style="opacity:.6;font-size:.72rem;margin-top:.2rem">📐 ${w.area_hectares.toFixed(1)} ha tracked (exact map box)</div>` : ""}
         ${alertHtml}
       </div>`;
     }).join("");
@@ -1819,7 +1832,9 @@ $("wlCheckFile").onchange = async e => {
   const fd = new FormData(); fd.append("file", f);
   try {
     const r = await fetch(`/api/watchlist/${wlPendingCheckId}/check`, { method: "POST", body: fd, headers: authHeaders() });
-    if (!r.ok) throw new Error((await r.json()).error || "check failed");
+    const body = await r.json();
+    if (!r.ok) throw new Error(body.error || "check failed");
+    if (body.not_comparable) { alert("⚠️ " + body.message); }
     await loadWatchlist();
   } catch (err) { alert("Could not check image: " + err.message); }
   wlPendingCheckId = null;

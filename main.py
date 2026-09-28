@@ -5,6 +5,7 @@ from PIL import Image
 from google import genai
 from google.genai import types
 import analytics as an
+import trust
 import qrcode
 import db
 import report as rpt
@@ -96,11 +97,14 @@ Rules:
   or an artifact: cloud, shadow, lighting, misalignment), give magnitude, and say if it looks real or an artifact.
 - Images are assumed chronological (Image 1 oldest) unless the user says otherwise; mention if that matters.
 - If the query cannot be answered from this data, say so and say what data is needed.
-- If a CHANGE MAP is flagged as a different location, say clearly the comparison is not reliable.
+- If a CHANGE MAP line says location_match=different, the two images do not show the same place: say the
+  comparison is not meaningful and do NOT describe changed_area as real change. If it says uncertain, caveat it.
+- Some images may state a real ground area in hectares (from geo-referenced capture); use those figures when quoting areas.
 Return ONLY JSON: {"answer": str (use **bold**), "relevant_images": [int], "confidence": "low|medium|high",
 "observations": [short evidence strings],
-"claims": [{"image": int, "class": "vegetation|water|built_or_bare|cloud_or_bright", "level": "none|low|moderate|high"}]}
-"claims" = the land-cover statements your answer makes about specific images (max 6), so they can be verified."""
+"claims": [{"image": int, "kind": "vegetation|water|built_up|cloud", "level": "none|low|moderate|high"}]}
+"claims" = at most 6 statements about the OVERALL amount of vegetation / water / built-up / cloud in a specific
+image that your answer relies on (they are automatically checked against pixel measurements). Use [] if none."""
 
 
 def ask_json(contents, system, temp=0.2):
@@ -130,58 +134,32 @@ _response_cache: dict[str, dict] = {}
 _CACHE_MAX = 200
 
 
-def _cache_key(prompt: str, files_bytes: list[bytes], areas: str = "") -> str:
+def _cache_key(prompt: str, files_bytes: list[bytes]) -> str:
     h = hashlib.sha256()
-    h.update(prompt.strip().lower().encode()); h.update(areas.encode())
+    h.update(prompt.strip().lower().encode())
     for b in files_bytes:
         h.update(hashlib.sha256(b).digest())
     return h.hexdigest()
 
 
-# Rough, clearly-labelled order-of-magnitude estimate — NOT a certified carbon audit.
-# Uses commonly-cited tropical-forest averages so it stays defensible if a judge asks "where's this number from".
+# Carbon/economic figure. Hectares now come from REAL scene geometry (Map Explorer bounding box, or an
+# area the user typed in) - never an assumed footprint. Carbon density & price are still standard averages,
+# so the tons/USD stay an order-of-magnitude estimate (labelled), but the hectares are measured.
 CARBON_TONS_PER_HECTARE = 180      # approx. above-ground biomass carbon stock, tropical/subtropical forest
 CARBON_PRICE_USD_PER_TON = 8       # approx. voluntary carbon market price (varies 3-15 USD/ton)
-SQKM_PER_IMAGE_ASSUMPTION_HA = 100  # assumed footprint of a single satellite crop, for a rough hectare conversion
 
 
-def _carbon_estimate(changed_pct: float, transitions: dict, area_ha: float | None = None) -> dict | None:
+def _carbon_estimate(transitions: dict, area_ha, area_source: str) -> dict | None:
     veg_loss_pct = transitions.get("vegetation", {}).get("loss_pct", 0)
-    if veg_loss_pct <= 0:
+    if veg_loss_pct <= 0 or not area_ha:
         return None
-    base_ha = area_ha if area_ha else SQKM_PER_IMAGE_ASSUMPTION_HA   # real map bbox area when known
-    hectares_lost = round(base_ha * veg_loss_pct / 100, 2)
+    hectares_lost = round(area_ha * veg_loss_pct / 100, 2)
     tons_co2 = round(hectares_lost * CARBON_TONS_PER_HECTARE, 1)
     usd = round(tons_co2 * CARBON_PRICE_USD_PER_TON)
-    src = ("Scene area taken from the exact Map Explorer lat/lon box" if area_ha
-           else "Scene area ASSUMED ~100 ha (upload via Map Explorer for a real-scale figure)")
     return {"hectares_lost_est": hectares_lost, "carbon_tons_est": tons_co2, "value_usd_est": usd,
-            "area_ha": round(base_ha, 2), "area_source": "map" if area_ha else "assumed",
-            "note": f"{src}. Order-of-magnitude estimate using standard tropical-forest averages "
-                    "(not a certified carbon audit)."}
-
-
-# ---------------- AI vs Pixels cross-check ("hallucination detector") ----------------
-# Gemini states land-cover claims ("heavy vegetation in image 2"); we compare each with what the
-# OpenCV pixel classification actually measured. Big disagreement => visible warning + lower confidence.
-_LEVEL_RANGE = {"none": (0, 8), "low": (0, 25), "moderate": (10, 60), "high": (25, 100)}  # plausible % of image area
-
-
-def _cross_check(claims, meas):
-    issues, checked = [], 0
-    for c in (claims or [])[:6]:
-        try:
-            i, cls, lvl = int(c["image"]), c["class"], c["level"]
-            pct = meas[i - 1][cls]
-            lo, hi = _LEVEL_RANGE[lvl]
-        except Exception:
-            continue
-        checked += 1
-        if not (lo - 5 <= pct <= hi + 5):
-            issues.append({"image": i, "class": cls.replace("_", " "), "ai_says": lvl, "pixels_measure_pct": pct})
-    if not checked:
-        return {"status": "not_checked", "checked": 0, "issues": []}
-    return {"status": "mismatch" if issues else "ok", "checked": checked, "issues": issues}
+            "area_source": area_source,
+            "note": f"Hectares come from the real scene area ({area_source}). CO2 tons and USD apply standard "
+                    "tropical-forest averages, so treat them as an order-of-magnitude estimate (not a certified audit)."}
 
 
 # Reference context from a real, checkable government source. Deliberately NOT turned into a
@@ -204,22 +182,19 @@ def _benchmark_context(transitions: dict) -> dict | None:
 
 
 @app.post("/api/query")
-async def query(prompt: str = Form(...), history: str = Form("[]"), areas: str = Form("[]"),
-                 files: list[UploadFile] = File(...), authorization: str = Header(None)):
+async def query(prompt: str = Form(...), history: str = Form("[]"), files: list[UploadFile] = File(...),
+                 scene_km2: float | None = Form(None), authorization: str = Header(None)):
     user_id = optional_user_id(authorization)  # querying stays usable without login; history is tagged if logged in
     try:
         raw = [await f.read() for f in files[:16]]
+        names = [f.filename or "" for f in files[:16]]
+        km2 = scene_km2 if (scene_km2 and 0 < scene_km2 < 100000) else None
         imgs = [Image.open(io.BytesIO(b)).convert("RGB") for b in raw]
         for im in imgs:
             im.thumbnail((1024, 1024))
         n = len(imgs)
-        try:  # per-image real-world area (hectares) from Map Explorer captures; null when unknown
-            area_list = [a if isinstance(a, (int, float)) and a > 0 else None for a in json.loads(areas)]
-        except Exception:
-            area_list = []
-        area_list += [None] * (n - len(area_list))
 
-        ckey = _cache_key(prompt, raw, json.dumps(area_list))
+        ckey = _cache_key(prompt + "|" + "|".join(names) + f"|{km2}", raw)
         cached = _response_cache.get(ckey)
         if cached:
             data = json.loads(json.dumps(cached))  # deep copy so history_id below doesn't mutate the cached entry
@@ -232,6 +207,16 @@ async def query(prompt: str = Form(...), history: str = Form("[]"), areas: str =
 
             # 2) measure (classical CV) + detect change
             meas = [an.stats(im) for im in imgs]
+            # real ground area per image: Map Explorer bbox (exact) > user-typed km^2 > unknown
+            area = []
+            for nm in names[:n]:
+                g = trust.parse_geo(nm)
+                if g:
+                    area.append({"ha": trust.geo_area_ha(g), "source": "Map Explorer bounding box"})
+                elif km2:
+                    area.append({"ha": km2 * 100.0, "source": "area entered by user"})
+                else:
+                    area.append(None)
             changes = []
             for a, b in pairs:
                 c = an.change(imgs[a - 1], imgs[b - 1]); c["pair"] = [a, b]; changes.append(c)
@@ -241,34 +226,51 @@ async def query(prompt: str = Form(...), history: str = Form("[]"), areas: str =
             for i, im in enumerate(imgs):
                 contents += [f"Image {i + 1}:", im]
             contents.append("MEASUREMENTS (% of image area):\n" + "\n".join(f"Image {i + 1}: {m}" for i, m in enumerate(meas)))
+            for i, ar in enumerate(area):
+                if ar:
+                    ha = ar["ha"]
+                    contents.append(f"Image {i + 1} real ground area = {ha:,.0f} ha ({ar['source']}); by the pixel classification "
+                                    f"vegetation ~{ha * meas[i]['vegetation'] / 100:,.0f} ha, water ~{ha * meas[i]['water'] / 100:,.0f} ha, "
+                                    f"built/bare ~{ha * meas[i]['built_or_bare'] / 100:,.0f} ha (approximate).")
             for c in changes:
-                lc = c["location_check"]
-                contents += [f"CHANGE MAP Image {c['pair'][0]} -> Image {c['pair'][1]}: changed_area={c['changed_pct']}% "
-                             f"(uncertainty range {c['changed_range'][0]}-{c['changed_range'][1]}%), "
-                             f"class transitions={c['transitions']}. LOCATION CHECK: {lc['status'].upper()} - {lc['message']}",
-                             c["overlay"]]
+                L = c["location"]
+                warn = (" WARNING: these images appear to show DIFFERENT places; changed_area is not meaningful."
+                        if L["status"] == "different" else
+                        (" (same-place could not be verified; caveat the result)" if L["status"] == "uncertain" else ""))
+                contents += [f"CHANGE MAP Image {c['pair'][0]} -> Image {c['pair'][1]}: location_match={L['status']} "
+                             f"(SIFT inliers={L['inliers']}, ratio={L['ratio']}, feature-aligned={L['aligned']}), "
+                             f"changed_area={c['changed_pct']}% (threshold-sensitivity range {c['changed_pct_low']}-{c['changed_pct_high']}%), "
+                             f"class transitions={c['transitions']}.{warn}", c["overlay"]]
             past = "\n".join(f"{m['role']}: {m['text']}" for m in json.loads(history)[-6:])
             contents.append(f"Previous conversation:\n{past}\n\nUser query: {prompt}")
             data = ask_json(contents, SYSTEM)
 
             data["intent"] = route.get("intent")
             data["measurements"] = meas
-            data["changes"] = [{"pair": c["pair"], "changed_pct": c["changed_pct"], "changed_range": c["changed_range"],
-                                "location_check": c["location_check"],
-                                "transitions": c["transitions"], "overlay": b64(c["overlay"]),
-                                "carbon_estimate": (_carbon_estimate(c["changed_pct"], c["transitions"],
-                                                                      area_list[c["pair"][0] - 1] or area_list[c["pair"][1] - 1])
-                                                    if c["location_check"]["status"] != "different" else None),
-                                "benchmark": _benchmark_context(c["transitions"])}
-                                for c in changes]
+            data["changes"] = []
+            for c in changes:
+                ok = c["location"]["status"] != "different"          # never quote carbon/benchmark for non-comparable images
+                ar = area[c["pair"][0] - 1]
+                data["changes"].append({
+                    "pair": c["pair"], "changed_pct": c["changed_pct"],
+                    "changed_pct_low": c["changed_pct_low"], "changed_pct_high": c["changed_pct_high"],
+                    "location": c["location"], "transitions": c["transitions"], "overlay": b64(c["overlay"]),
+                    "carbon_estimate": _carbon_estimate(c["transitions"], ar["ha"], ar["source"]) if (ok and ar) else None,
+                    "benchmark": _benchmark_context(c["transitions"]) if ok else None})
+            data["area"] = [({"area_ha": round(ar["ha"]), "source": ar["source"],
+                              "vegetation_ha": round(ar["ha"] * meas[i]["vegetation"] / 100),
+                              "water_ha": round(ar["ha"] * meas[i]["water"] / 100)} if ar else None)
+                             for i, ar in enumerate(area)]
 
-            # AI-vs-pixels cross-check + confidence downgrade when anything looks unreliable
-            data["cross_check"] = _cross_check(data.pop("claims", None), meas)
-            bad_loc = any(c["location_check"]["status"] == "different" for c in changes)
-            if (data["cross_check"]["status"] == "mismatch" or bad_loc) and data.get("confidence") != "low":
-                data["confidence_note"] = ("Lowered: images don't look like the same location." if bad_loc
-                                           else "Lowered: the AI's claim disagrees with the pixel measurements.")
-                data["confidence"] = "low" if bad_loc or len(data["cross_check"]["issues"]) > 1 else "medium"
+            # ---- Trust Engine: audit the AI's own answer ----
+            claims = data.get("claims") if isinstance(data.get("claims"), list) else []
+            px = trust.verify_claims(claims, meas)
+            locs = [{"pair": c["pair"], **c["location"]} for c in changes]
+            conf0 = data.get("confidence")
+            conf1, reasons = trust.adjust_confidence(conf0, px["status"], [l["status"] for l in locs])
+            data["confidence"] = conf1
+            data["trust"] = {"pixel_check": px, "locations": locs, "confidence_original": conf0,
+                             "confidence_adjusted": conf1, "reasons": reasons}
 
             if len(_response_cache) >= _CACHE_MAX:
                 _response_cache.pop(next(iter(_response_cache)))  # drop oldest, simple FIFO cap
@@ -276,8 +278,9 @@ async def query(prompt: str = Form(...), history: str = Form("[]"), areas: str =
 
         # 4) persist to history (every analysis becomes revisitable + report-able)
         thumb = b64(imgs[0], max_side=360, quality=70) if imgs else None
+        hist_obs = list(data.get("observations") or []) + trust.summary_lines(data.get("trust", {}))
         hid = db.add_history(user_id, prompt, data.get("intent"), data.get("answer"),
-                              data.get("confidence"), thumb, data.get("observations"))
+                              data.get("confidence"), thumb, hist_obs)
         data["history_id"] = hid
         return data
     except Exception as e:
@@ -336,12 +339,11 @@ def api_report_qr(history_id: int, request: Request):
 # ---------------- Watchlist (requires login: each account has its own private watchlist) ----------------
 
 @app.post("/api/watchlist/save")
-async def watchlist_save(name: str = Form(...), file: UploadFile = File(...), area_hectares: float | None = Form(None),
-                          user_id: int = Depends(current_user_id)):
+async def watchlist_save(name: str = Form(...), file: UploadFile = File(...), user_id: int = Depends(current_user_id)):
     im = Image.open(io.BytesIO(await file.read())).convert("RGB"); im.thumbnail((1024, 1024))
     meas = an.stats(im)
-    wid = db.add_watchlist(user_id, name, b64(im, max_side=800), meas, area_hectares)
-    return {"id": wid, "name": name, "baseline_meas": meas, "area_hectares": area_hectares}
+    wid = db.add_watchlist(user_id, name, b64(im, max_side=800), meas)
+    return {"id": wid, "name": name, "baseline_meas": meas}
 
 
 @app.get("/api/watchlist")
@@ -357,12 +359,14 @@ async def watchlist_check(watchlist_id: int, file: UploadFile = File(...), user_
     baseline_im = b64_to_image(wl["baseline_b64"])
     new_im = Image.open(io.BytesIO(await file.read())).convert("RGB"); new_im.thumbnail((1024, 1024))
     c = an.change(baseline_im, new_im)
-    loc_bad = c["location_check"]["status"] == "different"
-    alert = c["changed_pct"] >= ALERT_THRESHOLD_PCT and not loc_bad   # never raise a real alert on a different place
-    ce = None if loc_bad else _carbon_estimate(c["changed_pct"], c["transitions"], wl.get("area_hectares"))
-    db.update_watchlist_check(watchlist_id, c["changed_pct"], alert, c["changed_range"], c["location_check"]["status"], ce)
-    return {"changed_pct": c["changed_pct"], "changed_range": c["changed_range"], "transitions": c["transitions"],
-            "location_check": c["location_check"], "carbon_estimate": ce,
+    if c["location"]["status"] == "different":
+        # Don't record a meaningless number or raise a false alert: the new image isn't this watchlist area.
+        return {"not_comparable": True, "location": c["location"],
+                "message": "This image doesn't appear to show the same place as the saved baseline, so it was not compared."}
+    alert = c["changed_pct"] >= ALERT_THRESHOLD_PCT
+    db.update_watchlist_check(watchlist_id, c["changed_pct"], alert)
+    return {"changed_pct": c["changed_pct"], "changed_pct_low": c["changed_pct_low"], "changed_pct_high": c["changed_pct_high"],
+            "location": c["location"], "transitions": c["transitions"],
             "overlay": b64(c["overlay"]), "alert": alert, "threshold": ALERT_THRESHOLD_PCT}
 
 
