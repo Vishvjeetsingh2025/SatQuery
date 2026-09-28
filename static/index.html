@@ -52,6 +52,8 @@ h2{font-size:1.1rem;margin-bottom:1rem}
 .ev{color:var(--mut);font-size:.85rem;margin:.6rem 0 0 1rem}
 .rel{display:flex;gap:.6rem;margin-top:.7rem;flex-wrap:wrap}.rel div{width:104px;font-size:.7rem;text-align:center}.rel img{width:104px;height:104px;object-fit:cover;border-radius:8px;border:1px solid var(--acc)}
 .maskBtn{width:100%;white-space:normal;line-height:1.25}
+.xwarn{margin-top:.6rem;padding:.5rem .7rem;border-radius:8px;font-size:.78rem;line-height:1.45;border:1px solid}
+.xwarn.bad{background:#ff505020;border-color:#ff5050;color:#ffc0c0}.xwarn.mid{background:#ffb02020;border-color:#ffb020;color:#ffe0a8}.xwarn.ok{background:#3fbf5f1c;border-color:#3fbf5f;color:#b6f2c4}
 .chg{display:flex;gap:.8rem;margin-top:.8rem;font-size:.82rem;color:var(--mut);align-items:center}.chg img{width:150px;border-radius:8px;border:1px solid #ff5050}
 .sb{display:flex;height:6px;border-radius:3px;overflow:hidden;margin:3px 0}.sb span{display:block}
 #stars{position:absolute;inset:0;width:100%;height:100%}
@@ -1114,6 +1116,7 @@ const $ = id => document.getElementById(id);
 })();
 
 let files = [], history = [];
+const fileAreas = new WeakMap();   // File -> real ground area (ha), known only for Map Explorer captures
 const esc = s => s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 const fmt = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\n/g, "<br>");
 
@@ -1278,6 +1281,8 @@ $("mapFetchBtn").onclick = async () => {
     const r = await fetchWithTimeout(url, {}, 12000);
     if (!r.ok) throw new Error("imagery service unavailable");
     lastImgBlob = await r.blob();
+    // exact ground area of THIS capture (bbox is ±deg around the pin) -> real hectares instead of a guess
+    lastCaptureAreaHa = (2 * deg * 111.32 * Math.cos(clickedLat * Math.PI / 180)) * (2 * deg * 111.32) * 100;
     $("mapPreview").src = URL.createObjectURL(lastImgBlob);
     $("mapPreview").style.display = "block";
     $("mapUseBtn").disabled = false; $("mapWlBtn").disabled = false;
@@ -1285,9 +1290,11 @@ $("mapFetchBtn").onclick = async () => {
   $("mapFetchBtn").disabled = false; $("mapFetchBtn").textContent = "📡 Fetch satellite image here";
 };
 
+let lastCaptureAreaHa = null;
 $("mapUseBtn").onclick = () => {
   if (!lastImgBlob) return;
   const file = new File([lastImgBlob], `map_${clickedLat.toFixed(4)}_${clickedLon.toFixed(4)}.png`, { type: "image/png" });
+  if (lastCaptureAreaHa) fileAreas.set(file, lastCaptureAreaHa);
   addFiles([file]);
   location.hash = "#/analyst";
 };
@@ -1299,6 +1306,7 @@ $("mapWlBtn").onclick = async () => {
   const name = prompt("Name this watchlist area:", suggested);
   if (!name) return;
   const fd = new FormData(); fd.append("name", name);
+  if (lastCaptureAreaHa) fd.append("area_hectares", lastCaptureAreaHa.toFixed(3));
   fd.append("file", new File([lastImgBlob], "baseline.png", { type: "image/png" }));
   $("mapWlBtn").disabled = true; $("mapWlBtn").textContent = "Saving…";
   try {
@@ -1629,6 +1637,7 @@ $("f").onsubmit = async e => {
   const fd = new FormData();
   fd.append("prompt", q); fd.append("history", JSON.stringify(history));
   files.forEach(f => fd.append("files", f));
+  fd.append("areas", JSON.stringify(files.map(f => fileAreas.get(f) || null)));
   try {
     const r = await fetch("/api/query", { method: "POST", body: fd, headers: authHeaders() });
     const d = await r.json();
@@ -1639,10 +1648,15 @@ $("f").onsubmit = async e => {
     let rest = "";
     (d.changes || []).forEach(c => {
       let carbonHtml = "";
+      const lc = c.location_check || {};
+      if (lc.status === "different" || lc.status === "uncertain") {
+        const bad = lc.status === "different";
+        carbonHtml += `<div class="xwarn ${bad ? "bad" : "mid"}">${bad ? "⛔" : "⚠️"} <b>Location check:</b> ${esc(lc.message)}</div>`;
+      }
       if (c.carbon_estimate) {
         const ce = c.carbon_estimate;
-        carbonHtml = `<div style="margin-top:.5rem;padding-top:.5rem;border-top:1px dashed var(--line);font-size:.78rem;color:var(--mut)">
-          🌳 Est. <b style="color:var(--tx)">${ce.hectares_lost_est} ha</b> vegetation lost ≈
+        carbonHtml += `<div style="margin-top:.5rem;padding-top:.5rem;border-top:1px dashed var(--line);font-size:.78rem;color:var(--mut)">
+          ${ce.area_source === "map" ? "📐 <b style='color:var(--tx)'>" + ce.area_ha + " ha</b> scene (exact map box) · " : ""}🌳 Est. <b style="color:var(--tx)">${ce.hectares_lost_est} ha</b> vegetation lost ≈
           <b style="color:var(--tx)">${ce.carbon_tons_est} tons CO₂</b> (~$${ce.value_usd_est})
           <span title="${esc(ce.note)}" style="cursor:help;opacity:.7">ℹ️</span></div>`;
       }
@@ -1652,9 +1666,15 @@ $("f").onsubmit = async e => {
           This scene shows ~${b.scene_veg_loss_pct}% of its area shifting away from vegetation.
           <i>${esc(b.caveat)}</i> Source: ${esc(b.source)}.</div>`;
       }
-      rest += `<div class="chg"><img src="data:image/jpeg;base64,${c.overlay}"><div><b style="color:var(--tx)">Image ${c.pair[0]} → ${c.pair[1]}</b><br>Changed area: <b class="cu" style="color:#ff7070" data-target="${c.changed_pct}">0.0%</b><br>${Object.entries(c.transitions).map(([k, v]) => `${k.replace(/_/g, " ")}: +${v.gain_pct}% / −${v.loss_pct}%`).join("<br>")}${carbonHtml}</div></div>`;
+      rest += `<div class="chg"><img src="data:image/jpeg;base64,${c.overlay}"><div><b style="color:var(--tx)">Image ${c.pair[0]} → ${c.pair[1]}</b><br>Changed area: <b class="cu" style="color:#ff7070" data-target="${c.changed_pct}">0.0%</b>${c.changed_range ? ` <span style="opacity:.8" title="Recomputed with the detection threshold nudged up/down — an honest error band">(range ${c.changed_range[0]}–${c.changed_range[1]}%)</span>` : ""}<br>${Object.entries(c.transitions).map(([k, v]) => `${k.replace(/_/g, " ")}: +${v.gain_pct}% / −${v.loss_pct}%`).join("<br>")}${carbonHtml}</div></div>`;
     });
-    rest += `<br><span class="chip">Confidence: ${esc(d.confidence || "?")}</span>`;
+    const cx = d.cross_check;
+    if (cx && cx.status === "mismatch") {
+      rest += `<div class="xwarn bad">⚠️ <b>AI and pixel-measurement mismatch</b> — ${cx.issues.map(i => `AI said <b>${esc(i.level)}</b> ${esc(i.class)} in Image ${i.image}, pixels measure <b>${i.pixels_measure_pct}%</b>`).join("; ")}. Confidence lowered.</div>`;
+    } else if (cx && cx.status === "ok") {
+      rest += `<div class="xwarn ok">✅ <b>Cross-checked:</b> ${cx.checked} AI claim${cx.checked > 1 ? "s" : ""} verified against pixel measurements.</div>`;
+    }
+    rest += `<br><span class="chip">Confidence: ${esc(d.confidence || "?")}</span>${d.confidence_note ? ` <span style="font-size:.72rem;opacity:.7">${esc(d.confidence_note)}</span>` : ""}`;
     if (d.history_id) rest += `<a class="rpt-link" href="/api/report/${d.history_id}" target="_blank">📥 Download PDF report</a>
       <button type="button" class="act-btn qrBtn" data-id="${d.history_id}">📱 QR</button>
       <button type="button" class="act-btn speakBtn">🔊 Read aloud</button>
@@ -1746,15 +1766,22 @@ async function loadWatchlist() {
     $("wlList").innerHTML = rows.map(w => {
       let alertHtml = "";
       if (w.last_check_ts) {
-        const pct = (w.last_changed_pct ?? 0).toFixed(1);
-        alertHtml = w.last_alert
+        const pct = (w.last_changed_pct ?? 0).toFixed(1) + (w.last_range ? ` (range ${w.last_range[0]}–${w.last_range[1]}%)` : "");
+        alertHtml = w.last_loc_status === "different"
+          ? `<div class="xwarn bad">⛔ The last image doesn't look like this location — result not reliable, no alert raised.</div>`
+          : w.last_alert
           ? `<div class="alertbox on pulseIn">⚠️ Alert: ${pct}% change detected since baseline!</div>`
           : `<div class="alertbox off">✅ No major change (${pct}%) — within normal range.</div>`;
+        if (w.last_impact && w.last_loc_status !== "different") {
+          const im = w.last_impact;
+          alertHtml += `<div class="xwarn mid">🌳 Est. <b>${im.hectares_lost_est} ha</b> vegetation lost ≈ <b>${im.carbon_tons_est} tCO₂</b> (~$${im.value_usd_est}) · ${im.area_source === "map" ? "real area from map box" : "area assumed"}</div>`;
+        }
       }
       return `<div class="wl-item">
         <div class="top"><b>${esc(w.name)}</b>
           <button type="button" class="smallbtn" data-check="${w.id}">Check new image</button>
         </div>
+        ${w.area_hectares ? `<div style="opacity:.6;font-size:.72rem;margin-top:.2rem">📐 ${w.area_hectares.toFixed(1)} ha tracked (exact map box)</div>` : ""}
         ${alertHtml}
       </div>`;
     }).join("");

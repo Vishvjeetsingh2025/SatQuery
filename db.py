@@ -50,13 +50,19 @@ def init():
         baseline_meas TEXT NOT NULL,
         last_check_ts REAL,
         last_changed_pct REAL,
-        last_alert INTEGER
+        last_alert INTEGER,
+        area_hectares REAL,
+        last_range TEXT,
+        last_loc_status TEXT,
+        last_impact TEXT
     );
     """)
     # best-effort migration for pre-existing DBs created before user_id existed
-    for tbl in ("history", "watchlist"):
+    for tbl, col, typ in (("history", "user_id", "INTEGER"), ("watchlist", "user_id", "INTEGER"),
+                          ("watchlist", "area_hectares", "REAL"), ("watchlist", "last_range", "TEXT"),
+                          ("watchlist", "last_loc_status", "TEXT"), ("watchlist", "last_impact", "TEXT")):
         try:
-            c.execute(f"ALTER TABLE {tbl} ADD COLUMN user_id INTEGER")
+            c.execute(f"ALTER TABLE {tbl} ADD COLUMN {col} {typ}")
         except sqlite3.OperationalError:
             pass
     c.commit(); c.close()
@@ -134,21 +140,28 @@ def get_history(hid, user_id=None, public=False):
 
 # ---------------- Watchlist ----------------
 
-def add_watchlist(user_id, name, baseline_b64, baseline_meas):
+def add_watchlist(user_id, name, baseline_b64, baseline_meas, area_hectares=None):
     c = _conn()
     cur = c.execute(
-        "INSERT INTO watchlist (user_id, name, created_ts, baseline_b64, baseline_meas) VALUES (?,?,?,?,?)",
-        (user_id, name, time.time(), baseline_b64, json.dumps(baseline_meas)))
+        "INSERT INTO watchlist (user_id, name, created_ts, baseline_b64, baseline_meas, area_hectares) VALUES (?,?,?,?,?,?)",
+        (user_id, name, time.time(), baseline_b64, json.dumps(baseline_meas), area_hectares))
     c.commit(); wid = cur.lastrowid; c.close()
     return wid
 
 
 def list_watchlist(user_id):
     c = _conn()
-    rows = c.execute("""SELECT id, name, created_ts, last_check_ts, last_changed_pct, last_alert
+    rows = c.execute("""SELECT id, name, created_ts, last_check_ts, last_changed_pct, last_alert,
+                                area_hectares, last_range, last_loc_status, last_impact
                          FROM watchlist WHERE user_id=? ORDER BY id DESC""", (user_id,)).fetchall()
     c.close()
-    return [dict(r) for r in rows]
+    out = []
+    for r in rows:
+        x = dict(r)
+        x["last_range"] = json.loads(x["last_range"]) if x.get("last_range") else None
+        x["last_impact"] = json.loads(x["last_impact"]) if x.get("last_impact") else None
+        out.append(x)
+    return out
 
 
 def get_watchlist(wid, user_id):
@@ -160,8 +173,10 @@ def get_watchlist(wid, user_id):
     return d
 
 
-def update_watchlist_check(wid, changed_pct, alert):
+def update_watchlist_check(wid, changed_pct, alert, changed_range=None, loc_status=None, impact=None):
     c = _conn()
-    c.execute("UPDATE watchlist SET last_check_ts=?, last_changed_pct=?, last_alert=? WHERE id=?",
-              (time.time(), changed_pct, int(alert), wid))
+    c.execute("""UPDATE watchlist SET last_check_ts=?, last_changed_pct=?, last_alert=?,
+                 last_range=?, last_loc_status=?, last_impact=? WHERE id=?""",
+              (time.time(), changed_pct, int(alert), json.dumps(changed_range) if changed_range else None,
+               loc_status, json.dumps(impact) if impact else None, wid))
     c.commit(); c.close()

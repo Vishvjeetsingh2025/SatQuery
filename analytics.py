@@ -64,15 +64,23 @@ def change(im_a, im_b):
     d8 = cv2.normalize(d, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
     t, _ = cv2.threshold(d8, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     thr = max(t / 255 * float(d.max()), 18)          # absolute floor: identical images => ~0% change
-    m = (d > thr).astype(np.uint8)
-    k = np.ones((5, 5), np.uint8)
-    m = cv2.morphologyEx(cv2.morphologyEx(m, cv2.MORPH_OPEN, k), cv2.MORPH_CLOSE, k)
-    n, lb, st, _ = cv2.connectedComponentsWithStats(m)
-    keep = np.zeros_like(m)
-    for i in range(1, n):
-        if st[i, cv2.CC_STAT_AREA] > 0.0005 * m.size:  # drop speckle noise
-            keep[lb == i] = 1
+
+    def _changed(th):
+        m = (d > th).astype(np.uint8)
+        k = np.ones((5, 5), np.uint8)
+        m = cv2.morphologyEx(cv2.morphologyEx(m, cv2.MORPH_OPEN, k), cv2.MORPH_CLOSE, k)
+        n, lb, st, _ = cv2.connectedComponentsWithStats(m)
+        keep = np.zeros_like(m)
+        for i in range(1, n):
+            if st[i, cv2.CC_STAT_AREA] > 0.0005 * m.size:  # drop speckle noise
+                keep[lb == i] = 1
+        return keep
+
+    keep = _changed(thr)
     ch = keep.astype(bool)
+    # uncertainty range: how much the answer moves if the threshold is 15% stricter / 13% looser
+    lo_pct = round(100 * float(_changed(thr * 1.15).astype(bool).mean()), 1)
+    hi_pct = round(100 * float(_changed(max(thr * 0.87, 12)).astype(bool).mean()), 1)
     ma, mb = masks(A), masks(B)
     tr = {}
     for k_ in ("vegetation", "water", "built_or_bare"):
@@ -82,5 +90,32 @@ def change(im_a, im_b):
     ov[ch] = (0.45 * ov[ch] + 0.55 * np.array([255, 40, 40])).astype(np.uint8)
     cnts, _ = cv2.findContours(keep, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cv2.drawContours(ov, cnts, -1, (255, 255, 0), 1)
-    return {"changed_pct": round(100 * float(ch.mean()), 1), "transitions": tr,
-            "overlay": Image.fromarray(ov)}
+    pct = round(100 * float(ch.mean()), 1)
+    return {"changed_pct": pct, "changed_range": [min(lo_pct, pct), max(hi_pct, pct)], "transitions": tr,
+            "overlay": Image.fromarray(ov), "location_check": same_location(im_a, im_b)}
+
+
+def same_location(im_a, im_b):
+    """Feature-matching sanity check (ORB + RANSAC homography): do these two images actually show the
+    same place? Guards against comparing e.g. two different cities and reporting a fake 'change'."""
+    ga = cv2.cvtColor(_arr(im_a, 640), cv2.COLOR_RGB2GRAY)
+    gb = cv2.cvtColor(_arr(im_b, 640), cv2.COLOR_RGB2GRAY)
+    orb = cv2.ORB_create(2000)
+    ka, da = orb.detectAndCompute(ga, None)
+    kb, db_ = orb.detectAndCompute(gb, None)
+    if da is None or db_ is None or len(ka) < 10 or len(kb) < 10:
+        return {"status": "uncertain", "inliers": 0, "message": "Too little texture to verify the two images show the same place."}
+    pairs = cv2.BFMatcher(cv2.NORM_HAMMING).knnMatch(da, db_, k=2)
+    good = [p[0] for p in pairs if len(p) == 2 and p[0].distance < 0.8 * p[1].distance]
+    inl = 0
+    if len(good) >= 8:
+        src = np.float32([ka[m.queryIdx].pt for m in good]).reshape(-1, 1, 2)
+        dst = np.float32([kb[m.trainIdx].pt for m in good]).reshape(-1, 1, 2)
+        H, mask = cv2.findHomography(src, dst, cv2.RANSAC, 5.0)
+        inl = int(mask.sum()) if mask is not None else 0
+    if inl >= 20:
+        return {"status": "same", "inliers": inl, "message": "Images match the same location."}
+    if inl >= 10:
+        return {"status": "uncertain", "inliers": inl, "message": "Images only weakly match — verify they show the same area."}
+    return {"status": "different", "inliers": inl,
+            "message": "These images do not appear to show the same location — the change result is not reliable."}
