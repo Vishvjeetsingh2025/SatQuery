@@ -335,10 +335,10 @@ html:not([data-page]),html[data-page="home"],html[data-page="login"]{--acc:#baff
 @media(max-width:900px){.map-wrap{grid-template-columns:1fr}#leafletMap{height:50vh}}
 
 /* ---------- Realistic rotating dotted-particle Earth (Watchlist page, right side) ---------- */
-.wl-layout{max-width:1400px;margin:0 auto;padding:0 4vw;display:grid;grid-template-columns:minmax(0,1fr) minmax(340px,470px);gap:1.4rem;align-items:start}
+.wl-layout{max-width:1400px;margin:0 auto;padding:0 4vw;display:grid;grid-template-columns:minmax(0,1fr) minmax(420px,640px);gap:1.4rem;align-items:start}
 .wl-layout .wl-toolbar{padding:0;max-width:none}
 .wl-layout .wl-grid{padding:0;margin:1.4rem 0 5rem;max-width:none}
-.wl-globe-wrap{position:sticky;top:1.5rem;height:clamp(400px,74vh,640px);border-radius:20px;overflow:hidden;
+.wl-globe-wrap{position:sticky;top:1.5rem;height:clamp(540px,90vh,860px);border-radius:20px;overflow:hidden;
   border:1px solid var(--line);background:#000;box-shadow:0 0 50px -14px rgba(255,95,109,.35)}
 .wl-globe-wrap::before{content:"";position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(70% 60% at 50% 55%,rgba(255,95,109,.10),transparent 70%)}
@@ -1433,7 +1433,7 @@ function initGlobe() {
       const target = AUTO + (hoverX == null ? 0 : (hoverX - 0.5) * 0.006);
       vel += (target - vel) * 0.04; rot += vel;
     }
-    const cx = W / 2, cy = H / 2, rad = Math.min(W, H) * 0.39;
+    const cx = W / 2, cy = H / 2, rad = Math.min(W, H) * 0.43;
     gx.clearRect(0, 0, W, H);
 
     // atmosphere glow: blue halo (strongest bottom-left) + thin warm rim (top-right)
